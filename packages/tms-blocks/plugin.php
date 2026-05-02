@@ -10,7 +10,7 @@
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
-    exit;
+    exit; 
 }
 
 $tmsblocks_utils_path = plugin_dir_path( __FILE__ ) . 'includes/utils/utils.php';

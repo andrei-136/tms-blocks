@@ -49,3 +49,8 @@ These blocks are used to define content structure and render block output in a p
 == Changelog ==
 = 1.0 =
 * Initial release.
+
+== Development ==
+
+The source code for this plugin, including unminified assets, is available at:
+https://github.com/andrei-136/tms-blocks
