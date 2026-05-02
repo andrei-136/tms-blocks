@@ -59,7 +59,8 @@ export default function StyleControls({
   allowedUnits = ['px', 'rem', 'em', '%', 'vw', 'vh', 'unitless', 'custom', 'size-presets'],
   setAttributes,
   controlProps = {},
-  clientId
+  clientId,
+  showStyleValuesPreview = false,
 }) {
   const { customStyle = {}, tmsClassName = '', utilityClasses = '' } = attributes;
   
@@ -174,7 +175,7 @@ export default function StyleControls({
                     {...getControlProps('Wrapper')}
         />
       )}
-      <StyleValuesPreview attributes={attributes} />
+      {showStyleValuesPreview && <StyleValuesPreview attributes={attributes} />}
     </div>
   );
 }
