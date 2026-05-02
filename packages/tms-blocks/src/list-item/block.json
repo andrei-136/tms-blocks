@@ -1,0 +1,37 @@
+{
+  "apiVersion": 3,
+  "name": "tmsblocks/list-item",
+  "title": "TMS List Item",
+  "category": "tms-blocks",
+  "icon": "editor-ul",
+  "description": "A single list item for TMS List Block.",
+  "parent": [ "tmsblocks/list-block" ],
+  "attributes": {
+    "renderBlock": { "type": "boolean", "default": true },
+    "content": {
+      "type": "string",
+      "default": ""
+    },
+    "uniqueId": { "type": "string" },
+    "anchorId": { "type": "string", "default": "" },
+    "ariaLabel": { "type": "string", "default": "" },
+    "ariaRole": { "type": "string", "default": "" },
+    "extraAriaAttributes": { "type": "array", "default": [] },
+    "customAttributes": { "type": "array", "default": [] },
+    "customStyle": { "type": "object", "default": {} },
+    "customStyleHover":        { "type": "object", "default": {} },
+    "customStyleFocusVisible": { "type": "object", "default": {} },
+    "responsiveStyle":         { "type": "object", "default": {} },
+    "breakpointOverrides":     { "type": "object", "default": {} },
+    "customBreakpoints":       { "type": "array",  "default": [] },
+    "tmsClassName": { "type": "string", "default": "" }
+    
+  },
+  "supports": {
+    "html": false,
+    "inserter": true,
+    "multiple": true
+  },
+  "editorScript": "file:../../build/index.js",
+  "render": "file:./render.php"
+}

@@ -1,0 +1,186 @@
+{
+  "apiVersion": 3,
+  "name": "tmsblocks/dynamic-field",
+  "title": "TMS Dynamic Field",
+  "category": "widgets",
+  "icon": "filter",
+  "description": "Displays data from the current query context using a path builder.",
+  "usesContext": [
+    "postId",
+    "postType",
+    "tmsblocks/contextPostId",
+    "tmsblocks/contextPostType"
+  ],
+  "attributes": {
+    "uniqueId": {
+      "type": "string"
+    },
+    "renderBlock": {
+      "type": "boolean",
+      "default": true
+    },
+    "tmsClassName": {
+      "type": "string",
+      "default": ""
+    },
+    "className": {
+      "type": "string",
+      "default": ""
+    },
+    "anchorId": {
+      "type": "string",
+      "default": ""
+    },
+    "ariaLabel": {
+      "type": "string",
+      "default": ""
+    },
+    "ariaRole": {
+      "type": "string",
+      "default": ""
+    },
+    "extraAriaAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "customAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "tagName": {
+      "type": "string",
+      "default": "div"
+    },
+    "customStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "responsiveStyle":     { "type": "object", "default": {} },
+    "itemResponsiveStyle": { "type": "object", "default": {} },
+    "breakpointOverrides": { "type": "object", "default": {} },
+    "customBreakpoints":   { "type": "array",  "default": [] },
+    "path": {
+      "type": "string",
+      "default": ""
+    },
+    "steps": {
+      "type": "array",
+      "default": []
+    },
+    "separator": {
+      "type": "string",
+      "default": ", "
+    },
+    "emptyText": {
+      "type": "string",
+      "default": ""
+    },
+    "dateFormat": {
+      "type": "string",
+      "default": ""
+    },
+    "commentsNoText": {
+      "type": "string",
+      "default": ""
+    },
+    "commentsOneText": {
+      "type": "string",
+      "default": ""
+    },
+    "commentsManyText": {
+      "type": "string",
+      "default": ""
+    },
+    "previewLimit": {
+      "type": "integer",
+      "default": 5
+    },
+    "itemType": {
+      "type": "string",
+      "default": "text"
+    },
+    "itemTagName": {
+      "type": "string",
+      "default": "span"
+    },
+    "itemClassName": {
+      "type": "string",
+      "default": ""
+    },
+    "itemStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "itemStyleHover": {
+      "type": "object",
+      "default": {}
+    },
+    "itemStyleFocusVisible": {
+      "type": "object",
+      "default": {}
+    },
+    "itemTransitionConfig": {
+      "type": "object",
+      "default": {}
+    },
+    "linkText": {
+      "type": "string",
+      "default": ""
+    },
+    "linkTextPath": {
+      "type": "string",
+      "default": ""
+    },
+    "linkTextSteps": {
+      "type": "array",
+      "default": []
+    },
+    "linkLabelMode": {
+      "type": "string",
+      "default": "dynamic"
+    },
+    "hrefSource": {
+      "type": "string",
+      "default": "field"
+    },
+    "staticHref": {
+      "type": "string",
+      "default": ""
+    },
+    "hrefPath": {
+      "type": "string",
+      "default": ""
+    },
+    "hrefSteps": {
+      "type": "array",
+      "default": []
+    },
+    "linkTarget": {
+      "type": "string",
+      "default": "_self"
+    },
+    "sourcePostId": {
+      "type": "number",
+      "default": 0
+    },
+    "sourcePostType": {
+      "type": "string",
+      "default": ""
+    },
+    "postSource": {
+      "type": "string",
+      "default": "current"
+    },
+    "activePreset": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "supports": {
+    "html": false,
+    "className": true,
+    "innerBlocks": false
+  },
+  "editorScript": "file:../../build/index.js",
+  "render": "file:./render.php"
+}

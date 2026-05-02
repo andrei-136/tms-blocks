@@ -1,0 +1,60 @@
+{
+  "apiVersion": 3,
+  "name": "tmsblocks/post-context",
+  "title": "Post Context",
+  "category": "widgets",
+  "icon": "database",
+  "description": "Provides a post context to child blocks. Children can pull fields from the scoped post.",
+  "usesContext": [ "postId", "postType" ],
+  "providesContext": {
+    "tmsblocks/contextPostId": "contextPostId",
+    "tmsblocks/contextPostType": "contextPostType"
+  },
+  "attributes": {
+    "contextPostType": {
+      "type": "string",
+      "default": "post"
+    },
+    "contextPostId": {
+      "type": "integer",
+      "default": 0
+    },
+    "renderBlock": {
+      "type": "boolean",
+      "default": true
+    },
+    "uniqueId": { "type": "string" },
+    "tagName": { "type": "string", "default": "div" },
+    "anchorId": { "type": "string", "default": "" },
+    "tmsClassName": { "type": "string", "default": "" },
+    "ariaLabel": { "type": "string", "default": "" },
+    "ariaRole": { "type": "string", "default": "" },
+    "extraAriaAttributes": { "type": "array", "default": [] },
+    "customAttributes": { "type": "array", "default": [] },
+    "customStyle": { "type": "object", "default": {} },
+    "customStyleHover": { "type": "object", "default": {} },
+    "customStyleFocusVisible": { "type": "object", "default": {} },
+    "responsiveStyle":     { "type": "object", "default": {} },
+    "breakpointOverrides": { "type": "object", "default": {} },
+    "customBreakpoints":   { "type": "array",  "default": [] },
+    "transitionConfig": {
+      "type": "object",
+      "default": {
+        "global": { "duration": "0.2", "durationUnit": "s", "easing": "ease", "delay": "0", "delayUnit": "s" },
+        "overrides": {},
+        "states": {
+          "hover": { "linked": true, "unlinkedProperties": [] },
+          "focusVisible": { "linked": true, "unlinkedProperties": [] }
+        }
+      }
+    }
+  },
+  "supports": {
+    "html": false,
+    "inserter": true,
+    "innerBlocks": true
+  },
+  "editorStyle": "file:../../build/index.css",
+  "editorScript": "file:../../build/index.js",
+  "render": "file:./render.php"
+}

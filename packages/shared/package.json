@@ -1,0 +1,6 @@
+{
+  "name": "shared",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Shared packages and tooling for TMS Blocks workspaces"
+}

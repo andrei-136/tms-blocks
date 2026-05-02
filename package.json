@@ -1,0 +1,11 @@
+{
+  "name": "tms-blocks",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspace tms-blocks",
+    "start": "npm run start --workspace tms-blocks"
+  }
+}

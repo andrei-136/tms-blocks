@@ -1,0 +1,140 @@
+{
+  "apiVersion": 3,
+  "name": "tmsblocks/img",
+  "title": "TMS Img",
+  "category": "media",
+  "icon": "format-image",
+  "description": "A simple image element. Compose with Post Context and Anchor blocks.",
+  "usesContext": [
+    "postId",
+    "postType",
+    "tmsblocks/contextPostId",
+    "tmsblocks/contextPostType"
+  ],
+  "attributes": {
+    "renderBlock": {
+      "type": "boolean",
+      "default": true
+    },
+    "uniqueId": {
+      "type": "string"
+    },
+    "imageSource": {
+      "type": "string",
+      "default": "library"
+    },
+    "imageID": {
+      "type": "number",
+      "default": null
+    },
+    "imageURL": {
+      "type": "string",
+      "default": ""
+    },
+    "imagePath": {
+      "type": "string",
+      "default": ""
+    },
+    "imageSteps": {
+      "type": "array",
+      "default": [{ "type": "", "value": "" }]
+    },
+    "imageSize": {
+      "type": "string",
+      "default": "full"
+    },
+    "alt": {
+      "type": "string",
+      "default": ""
+    },
+    "altSource": {
+      "type": "string",
+      "default": "media-library"
+    },
+    "altPath": {
+      "type": "string",
+      "default": ""
+    },
+    "altSteps": {
+      "type": "array",
+      "default": [{ "type": "", "value": "" }]
+    },
+    "loading": {
+      "type": "string",
+      "default": "lazy"
+    },
+    "decoding": {
+      "type": "string",
+      "default": "auto"
+    },
+    "fetchpriority": {
+      "type": "string",
+      "default": ""
+    },
+    "ariaLabel": {
+      "type": "string",
+      "default": ""
+    },
+    "extraAriaAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "customAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "customStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "customStyleHover": {
+      "type": "object",
+      "default": {}
+    },
+    "customStyleFocusVisible": {
+      "type": "object",
+      "default": {}
+    },
+    "responsiveStyle":     { "type": "object", "default": {} },
+    "breakpointOverrides": { "type": "object", "default": {} },
+    "customBreakpoints":   { "type": "array",  "default": [] },
+    "transitionConfig": {
+      "type": "object",
+      "default": {
+        "global": { "duration": "0.2", "durationUnit": "s", "easing": "ease", "delay": "0", "delayUnit": "s" },
+        "overrides": {},
+        "states": {
+          "hover": { "linked": true, "unlinkedProperties": [] },
+          "focusVisible": { "linked": true, "unlinkedProperties": [] }
+        }
+      }
+    },
+    "tmsClassName": {
+      "type": "string",
+      "default": ""
+    },
+    "anchorId": {
+      "type": "string",
+      "default": ""
+    },
+    "sourcePostId": {
+      "type": "number",
+      "default": 0
+    },
+    "sourcePostType": {
+      "type": "string",
+      "default": ""
+    },
+    "postSource": {
+      "type": "string",
+      "default": "current"
+    }
+  },
+  "supports": {
+    "html": false,
+    "inserter": true
+  },
+  "editorStyle": "file:../../build/index.css",
+  "editorScript": "file:../../build/index.js",
+  "render": "file:./render.php"
+}

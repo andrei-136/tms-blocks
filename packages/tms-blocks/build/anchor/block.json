@@ -1,0 +1,80 @@
+{
+  "apiVersion": 3,
+  "name": "tmsblocks/anchor",
+  "title": "TMS Link",
+  "category": "widgets",
+  "icon": "admin-links",
+  "description": "Adds an anchor point you can link to by ID.",
+  "usesContext": [
+    "postId",
+    "postType",
+    "tmsblocks/contextPostId",
+    "tmsblocks/contextPostType"
+  ],
+  "attributes": {
+    "uniqueId":    { "type": "string" },
+    "anchorId":    { "type": "string", "default": "" },
+    "tmsClassName": { "type": "string", "default": "" },
+    "utilityClasses": { "type": "string", "default": "" },
+    "className":   { "type": "string", "default": "" },
+    "ariaLabel":   { "type": "string", "default": "" },
+    "ariaRole":    { "type": "string", "default": "" },
+    "extraAriaAttributes": { "type": "array", "default": [] },
+    "customAttributes":    { "type": "array", "default": [] },
+
+    "innerText":   { "type": "string", "default": "" },
+    "isInnerTextDynamic": { "type": "boolean", "default": false },
+    "innerTextDynamicSteps": { "type": "array", "default": [] },
+    "innerTextDynamicPath": { "type": "string", "default": "" },
+    "innerTextDynamicDateFormat": { "type": "string", "default": "" },
+    "innerTextDynamicCommentsNoText": { "type": "string", "default": "" },
+    "innerTextDynamicCommentsOneText": { "type": "string", "default": "" },
+    "innerTextDynamicCommentsManyText": { "type": "string", "default": "" },
+    "href":        { "type": "string", "default": "" },
+    "isDynamic":   { "type": "boolean", "default": false },
+    "dynamicSteps": { "type": "array", "default": [] },
+    "dynamicPath": { "type": "string", "default": "" },
+    "dynamicDateFormat":       { "type": "string", "default": "" },
+    "dynamicCommentsNoText":   { "type": "string", "default": "" },
+    "dynamicCommentsOneText":  { "type": "string", "default": "" },
+    "dynamicCommentsManyText": { "type": "string", "default": "" },
+    "sourcePostId": { "type": "number", "default": 0 },
+    "sourcePostType": { "type": "string", "default": "" },
+    "postSource": { "type": "string", "default": "current" },
+
+    "rel":              { "type": "string", "default": "" },
+    "referrerPolicy":   { "type": "string", "default": "" },
+    "target":           { "type": "string", "default": "" },
+
+    "customStyle":             { "type": "object", "default": {} },
+    "responsiveStyle": { "type": "object", "default": {} },
+    "breakpointOverrides": { "type": "object", "default": {} },
+    "customBreakpoints": {"type": "array", "default": [] },
+    "customStyleHover":        { "type": "object", "default": {} },
+    "customStyleFocusVisible": { "type": "object", "default": {} },
+    "renderBlock": { "type": "boolean", "default": true },
+    "transitionConfig": {
+      "type": "object",
+      "default": {
+        "global": {
+          "duration": "0.2", "durationUnit": "s",
+          "easing": "ease",
+          "delay": "0",     "delayUnit": "s"
+        },
+        "overrides": {},
+        "states": {
+          "hover":        { "linked": true, "unlinkedProperties": [] },
+          "focusVisible": { "linked": true, "unlinkedProperties": [] }
+        }
+      }
+    }
+  },
+  "supports": {
+    "html": false,
+    "inserter": true,
+    "innerBlocks": true
+  },
+  "editorStyle": "file:../../build/index.css",
+  "editorScript": "file:../../build/index.js",
+  "render": "file:./render.php"
+}

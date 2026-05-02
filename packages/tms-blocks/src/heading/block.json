@@ -1,0 +1,123 @@
+{
+  "apiVersion": 3,
+  "name": "tmsblocks/heading",
+  "title": "TMS Heading",
+  "category": "widgets",
+  "icon": "heading",
+  "description": "Custom heading with optional letter span wrapping.",
+  "usesContext": [
+    "postId",
+    "postType",
+    "tmsblocks/contextPostId",
+    "tmsblocks/contextPostType"
+  ],
+  "attributes": {
+    "content": {
+      "type": "string",
+      "default": ""
+    },
+    "level": {
+      "type": "number",
+      "default": 2
+    },
+    "ariaRole": {
+      "type": "string",
+      "default": ""
+    },
+    "extraAriaAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "renderBlock": {
+      "type": "boolean",
+      "default": true
+    },
+    "uniqueId": {
+      "type": "string"
+    },
+    "anchorId": {
+      "type": "string",
+      "default": ""
+    },
+    "ariaLabel": {
+      "type": "string",
+      "default": ""
+    },
+    "spanClass": {
+      "type": "string",
+      "default": ""
+    },
+    "customAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "customStyle":             { "type": "object", "default": {} },
+    "customStyleHover":        { "type": "object", "default": {} },
+    "customStyleFocusVisible": { "type": "object", "default": {} },
+    "responsiveStyle":         { "type": "object", "default": {} },
+    "breakpointOverrides":     { "type": "object", "default": {} },
+    "customBreakpoints":       { "type": "array",  "default": [] },
+    "tmsClassName": {
+      "type": "string",
+      "default": ""
+    },
+    "editAsHtml": {
+      "type": "boolean",
+      "default": false
+    },
+    "isDynamic": {
+      "type": "boolean",
+      "default": false
+    },
+    "dynamicSteps": {
+      "type": "array",
+      "default": []
+    },
+    "dynamicPath": {
+      "type": "string",
+      "default": ""
+    },
+    "dynamicDateFormat": {
+      "type": "string",
+      "default": ""
+    },
+    "dynamicCommentsNoText": {
+      "type": "string",
+      "default": ""
+    },
+    "dynamicCommentsOneText": {
+      "type": "string",
+      "default": ""
+    },
+    "dynamicCommentsManyText": {
+      "type": "string",
+      "default": ""
+    },
+    "separator": {
+      "type": "string",
+      "default": ", "
+    },
+    "emptyText": {
+      "type": "string",
+      "default": ""
+    },
+    "sourcePostId": {
+      "type": "number",
+      "default": 0
+    },
+    "sourcePostType": {
+      "type": "string",
+      "default": ""
+    },
+    "postSource": {
+      "type": "string",
+      "default": "current"
+    }
+  },
+  "supports": {
+    "html": false,
+    "inserter": true
+  },
+  "editorScript": "file:../../build/index.js",
+  "render": "file:./render.php"
+}

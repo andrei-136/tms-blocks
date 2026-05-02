@@ -1,0 +1,125 @@
+{
+  "apiVersion": 3,
+  "name": "tmsblocks/paragraph",
+  "title": "TMS Paragraph",
+  "category": "tms-blocks",
+  "icon": "editor-paragraph",
+  "description": "A paragraph block equivalent to core/paragraph.",
+  "usesContext": [
+    "postId",
+    "postType",
+    "tmsblocks/contextPostId",
+    "tmsblocks/contextPostType"
+  ],
+  "attributes": {
+    "tagName": {
+      "type": "string",
+      "default": "p"
+    },
+    "content": {
+      "type": "string",
+      "default": ""
+    },
+    "renderBlock": {
+      "type": "boolean",
+      "default": true
+    },
+    "uniqueId": { "type": "string" },
+    "anchorId": {
+      "type": "string",
+      "default": ""
+    },
+    "ariaLabel": {
+      "type": "string",
+      "default": ""
+    },
+    "ariaRole": {
+      "type": "string",
+      "default": ""
+    },
+    "extraAriaAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "customAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "customStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "customStyleHover":        { "type": "object", "default": {} },
+    "customStyleFocusVisible": { "type": "object", "default": {} },
+    "responsiveStyle":         { "type": "object", "default": {} },
+    "breakpointOverrides":     { "type": "object", "default": {} },
+    "customBreakpoints":       { "type": "array",  "default": [] },
+    "tmsClassName": {
+      "type": "string",
+      "default": ""
+    },
+    "isDynamic": {
+    "type": "boolean",
+    "default": false
+    },
+    "dynamicSteps": {
+      "type": "array",
+      "default": []
+    },
+    "dynamicPath": {
+      "type": "string",
+      "default": ""
+    },
+    "dynamicDateFormat": {
+      "type": "string",
+      "default": ""
+    },
+    "dynamicCommentsNoText": {
+      "type": "string",
+      "default": ""
+    },
+    "dynamicCommentsOneText": {
+      "type": "string",
+      "default": ""
+    },
+    "dynamicCommentsManyText": {
+      "type": "string",
+      "default": ""
+    },
+    "separator": {
+      "type": "string",
+      "default": ", "
+    },
+    "emptyText": {
+      "type": "string",
+      "default": ""
+    },
+    "sourcePostId": {
+      "type": "number",
+      "default": 0
+    },
+    "sourcePostType": {
+      "type": "string",
+      "default": ""
+    },
+    "postSource": {
+      "type": "string",
+      "default": "current"
+    },
+    "truncateEnabled": { "type": "boolean", "default": false },
+    "truncateLength":  { "type": "number",  "default": 200 },
+    "truncateUnit":    { "type": "string",  "default": "characters" },
+    "truncateSuffix":  { "type": "string",  "default": "..." }
+  },
+  "supports": {
+    "html": false,
+    "inserter": true,
+    "layout": false,
+    "typography": false,
+    "color": false,
+    "spacing": false,
+    "dimensions": false
+  },
+  "editorScript": "file:../../build/index.js",
+  "render": "file:./render.php"
+}

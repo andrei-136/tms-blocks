@@ -1,0 +1,62 @@
+{
+  "apiVersion": 3,
+  "name": "tmsblocks/list-block",
+  "title": "TMS List",
+  "category": "widgets",
+  "icon": "editor-ul",
+  "description": "A customizable list block (ul, ol) with inner list items.",
+  "attributes": {
+    "renderBlock": {
+      "type": "boolean",
+      "default": true
+    },
+    "uniqueId": { "type": "string" },
+    "tagName": {
+      "type": "string",
+      "default": "ul"
+    },
+    "anchorId": {
+      "type": "string",
+      "default": ""
+    },
+    "ariaLabel": {
+      "type": "string",
+      "default": ""
+    },
+    "ariaRole": {
+      "type": "string",
+      "default": ""
+    },
+    "extraAriaAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "customAttributes": {
+      "type": "array",
+      "default": []
+    },
+    "customStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "customStyleHover":        { "type": "object", "default": {} },
+    "customStyleFocusVisible": { "type": "object", "default": {} },
+    "responsiveStyle":         { "type": "object", "default": {} },
+    "breakpointOverrides":     { "type": "object", "default": {} },
+    "customBreakpoints":       { "type": "array",  "default": [] },
+    "transitionConfig": {
+      "type": "object",
+      "default": {}
+    },
+    "tmsClassName": {
+      "type": "string",
+      "default": ""
+    }
+  },
+  "supports": {
+    "html": false,
+    "inserter": true
+  },
+  "editorScript": "file:../../build/index.js",
+  "render": "file:./render.php"
+}

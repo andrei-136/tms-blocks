@@ -1,0 +1,10 @@
+.wp-block-tms-anchor {
+  display: inline-block;
+  color: #2271b1;
+  cursor: default;
+}
+
+.wp-block-tms-anchor .tms-anchor-placeholder {
+  color: #2271b1;
+  font-style: italic;
+}

@@ -1,0 +1,307 @@
+/* ============================================
+   TMS Blocks — Editor Sidebar Styles
+   Scoped to TMS block inspector panels
+   ============================================ */
+
+/* --- Brand Tokens --- */
+:root {
+  --tms-cold-white:   hsl(251, 50%, 94%);
+  --tms-cold-white-darker: hsl(251, 32%, 88%);
+  --tms-cold-white-opened: hsl(251, 20%, 85%);
+  --tms-cold-white-help: hsl(251, 50%, 97%);
+  --tms-contrast:     #1B2727;
+  --tms-accent:       #FFC928;
+  --tms-accent-dim:   #FFD966;       /* lighter accent for hover */
+  --tms-accent-dark:  #C49900;       /* darker accent for active/pressed */
+  --tms-text-muted:   #4a5a5a;       /* softened contrast for secondary text */
+  --tms-border:       #d6d0f0;       /* cold white darkened slightly */     
+  --tms-separator:    #bdb8cf;          /* light border for separating sections */
+}
+
+
+/* ============================================
+   Panel Bodies
+   ============================================ */
+
+/* PanelBody header row */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-panel__body
+.components-panel__body-title button {
+  /* background-color: var(--tms-warm-white); */
+  color: var(--tms-contrast);
+  border-bottom: 1px solid var(--tms-border);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-panel__body
+.components-panel__body-title button:hover {
+  background-color: var(--tms-cold-white);
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-panel__body.is-opened
+.components-panel__body-title button {
+  background-color: var(--tms-cold-white-opened);
+}
+
+/* Open panel body background */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-panel__body.is-opened {
+  background-color: var(--tms-cold-white);
+  border-bottom: 1px solid var(--tms-border);
+}
+
+/* Panel body toggle arrow icon */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-panel__body
+.components-panel__body-title button svg {
+  color: var(--tms-contrast);
+}
+
+
+/* ============================================
+   Inputs — TextControl, SelectControl
+   ============================================ */
+
+.block-editor-block-inspector .tmsblocks-inspector-controls input[type="text"],
+.block-editor-block-inspector .tmsblocks-inspector-controls input[type="number"],
+.block-editor-block-inspector .tmsblocks-inspector-controls select,
+.block-editor-block-inspector .tmsblocks-inspector-controls textarea {
+  border-color: var(--tms-border);
+  background-color: #fff;
+  color: var(--tms-contrast);
+  border-radius: 4px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+/* .block-editor-block-inspector .tmsblocks-inspector-controls input[type="text"]:focus,
+.block-editor-block-inspector .tmsblocks-inspector-controls input[type="number"]:focus,
+.block-editor-block-inspector .tmsblocks-inspector-controls select:focus,
+.block-editor-block-inspector .tmsblocks-inspector-controls textarea:focus {
+  border-color: var(--tms-accent);
+  border-width: 2px;
+  box-shadow: 0 0 0 2px var(--tms-accent);
+  outline: none;
+} */
+
+/* Input labels */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-base-control__label,
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-input-control__label {
+  color: var(--tms-contrast);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+/* Help text */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-base-control__help {
+  color: var(--tms-text-muted);
+  font-style: italic;
+}
+
+
+/* ============================================
+   Toggle Controls
+   ============================================ */
+
+/* Track — unchecked */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-form-toggle__track {
+  background-color: var(--tms-border);
+}
+
+/* Track — checked */
+.block-editor-block-inspector .tmsblocks-inspector-controls
+.components-form-toggle.is-checked .components-form-toggle__track {
+  background-color: var(--tms-accent);
+}
+
+/* Thumb */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-form-toggle__thumb {
+  background-color: white;
+  border-color: transparent;
+}
+
+
+/* ============================================
+   Buttons (within inspector panels)
+   ============================================ */
+
+/* Secondary buttons */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button.is-secondary {
+  border-color: var(--tms-border);
+  color: var(--tms-contrast);
+  background: white;
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button.is-secondary:hover {
+  background-color: var(--tms-cold-white);
+  border-color: var(--tms-accent);
+  color: var(--tms-contrast);
+}
+
+/* Primary buttons */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button.is-primary {
+  background-color: var(--tms-accent);
+  color: var(--tms-contrast);
+  border: none;
+  font-weight: 700;
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button.is-primary:hover {
+  background-color: var(--tms-accent-dim);
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button.is-primary:active {
+  background-color: var(--tms-accent-dark);
+}
+
+/* Destructive / reset buttons */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button.is-destructive {
+  color: #c0392b;
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button.is-destructive:hover {
+  background-color: #fdecea;
+}
+
+/* ButtonGroup active item (e.g. UnitControls preset buttons) */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button-group .components-button[aria-pressed="true"],
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-button-group .components-button.is-primary {
+  background-color: var(--tms-accent);
+  color: var(--tms-contrast);
+  border-color: var(--tms-accent-dark);
+}
+
+
+/* ============================================
+   Range Control
+   ============================================ */
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-range-control__slider::-webkit-slider-thumb {
+  background-color: var(--tms-accent);
+  border-color: var(--tms-accent-dark);
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-range-control__slider:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tms-accent) 35%, transparent);
+}
+
+
+/* ============================================
+   SelectControl dropdown arrow accent
+   ============================================ */
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-select-control select:focus {
+  border-color: var(--tms-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--tms-accent) 30%, transparent);
+}
+
+
+/* ============================================
+   Preset Selector (PresetSelector.js)
+   ============================================ */
+
+/* Preset help text */
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-base-control__help {
+  background-color: var(--tms-cold-white-help);
+  border-left: 3px solid var(--tms-accent);
+  padding: 6px 8px;
+  border-radius: 0 4px 4px 0;
+  margin-top: 6px;
+  font-style: normal;
+  color: var(--tms-contrast);
+  font-size: 11px;
+}
+
+
+/* ============================================
+   Panel header (top-level "Block" / plugin panel)
+   ============================================ */
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-panel__header {
+  background-color: var(--tms-contrast);
+  color: white;
+  border-bottom: 2px solid var(--tms-accent);
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .components-panel__header h2 {
+  color: white;
+}
+
+/* ===============================================
+ Generic block tab header sticky in inspector 
+ =============================================== */
+.block-editor-block-inspector .tmsblocks-inspector-controls
+ .tmsblocks-inspector-top-tabs .components-tab-panel__tabs {
+  position: sticky;
+  top: 47px;
+  z-index: 5;
+  background: var(--tms-cold-white, #eeebf9);
+  border-bottom: 1px solid var(--tms-border, #d6d0f0);
+}
+
+.tmsblocks-separator {
+  margin: 8px -16px;
+  height: 2px;
+  background-color: var(--tms-separator);
+}
+
+.tmsblocks-image-settings__preview-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tmsblocks-image-settings__preview {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex: 0 0 auto;
+}
+
+.tmsblocks-image-settings__preview--empty {
+  background-color: #d9d9d9;
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .tmsblocks-image-settings__clear.components-button {
+  min-height: 26px;
+  padding: 1px 8px;
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.block-editor-block-inspector .tmsblocks-inspector-controls .tmsblocks-image-settings__dynamic-group {
+  margin-top: 8px;
+  margin-bottom: 12px;
+  outline: 1px solid #a8a8b3;
+  outline-offset: 4px;
+}
+
+.tms-attribute-repeater .components-base-control {
+  margin-bottom: 0 !important;
+}
+
+ /* =================================================
+    Custom appender button for InnerBlocks, used in TMS Anchor block 
+    ==================================================     */
+
+.tmsblocks-block-appender__button {
+  font-size: 24px;
+  font-weight: 300;
+  line-height: 1;
+  width: 32px !important;
+  height: 32px !important;
+  background-color: black !important;
+  color: #fff !important;
+  border: none !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tmsblocks-block-appender__button:hover {
+  background-color: var(--tms-accent-dim) !important;
+  color: black !important;
+}

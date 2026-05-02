@@ -1,0 +1,16 @@
+{
+  "name": "tms-blocks",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Custom Gutenberg blocks",
+  "scripts": {
+    "start": "wp-scripts start",
+    "build": "wp-scripts build"
+  },
+  "devDependencies": {
+    "@wordpress/scripts": "^26.0.0"
+  },
+  "dependencies": {
+    "@wordpress/icons": "^11.7.0"
+  }
+}

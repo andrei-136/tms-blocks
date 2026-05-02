@@ -1,0 +1,23 @@
+import '../assets/css/editor.css';
+
+// import './author-name/index.js';
+// import './co-author-names/index.js';
+// import './post-thumbnail/index.js';
+import './anchor/index.js';
+import './generic-block/index.js';
+// import './image/index.js';
+import './heading/index.js';
+import './list/index.js';
+import './list-item/index.js';
+// import './excerpt/index.js';
+// import './local-video-embed/index.js';
+// import './video/index.js';
+// import './carousel/index.js';
+// import './carousel-wrapper/index.js';
+// import './carousel-track/index.js';
+// import './button/index.js';
+import './dynamic-field/index.js';
+import './paragraph/index.js';
+import './post-context/index.js';
+import './img/index.js';
+// In future: import './another-block';
