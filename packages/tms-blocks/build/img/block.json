@@ -37,7 +37,12 @@
     },
     "imageSteps": {
       "type": "array",
-      "default": [{ "type": "", "value": "" }]
+      "default": [
+        {
+          "type": "",
+          "value": ""
+        }
+      ]
     },
     "imageSize": {
       "type": "string",
@@ -57,7 +62,12 @@
     },
     "altSteps": {
       "type": "array",
-      "default": [{ "type": "", "value": "" }]
+      "default": [
+        {
+          "type": "",
+          "value": ""
+        }
+      ]
     },
     "loading": {
       "type": "string",
@@ -95,17 +105,38 @@
       "type": "object",
       "default": {}
     },
-    "responsiveStyle":     { "type": "object", "default": {} },
-    "breakpointOverrides": { "type": "object", "default": {} },
-    "customBreakpoints":   { "type": "array",  "default": [] },
+    "responsiveStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "breakpointOverrides": {
+      "type": "object",
+      "default": {}
+    },
+    "customBreakpoints": {
+      "type": "array",
+      "default": []
+    },
     "transitionConfig": {
       "type": "object",
       "default": {
-        "global": { "duration": "0.2", "durationUnit": "s", "easing": "ease", "delay": "0", "delayUnit": "s" },
+        "global": {
+          "duration": "0.2",
+          "durationUnit": "s",
+          "easing": "ease",
+          "delay": "0",
+          "delayUnit": "s"
+        },
         "overrides": {},
         "states": {
-          "hover": { "linked": true, "unlinkedProperties": [] },
-          "focusVisible": { "linked": true, "unlinkedProperties": [] }
+          "hover": {
+            "linked": true,
+            "unlinkedProperties": []
+          },
+          "focusVisible": {
+            "linked": true,
+            "unlinkedProperties": []
+          }
         }
       }
     },

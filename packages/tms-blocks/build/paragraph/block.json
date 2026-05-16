@@ -24,7 +24,9 @@
       "type": "boolean",
       "default": true
     },
-    "uniqueId": { "type": "string" },
+    "uniqueId": {
+      "type": "string"
+    },
     "anchorId": {
       "type": "string",
       "default": ""
@@ -49,18 +51,33 @@
       "type": "object",
       "default": {}
     },
-    "customStyleHover":        { "type": "object", "default": {} },
-    "customStyleFocusVisible": { "type": "object", "default": {} },
-    "responsiveStyle":         { "type": "object", "default": {} },
-    "breakpointOverrides":     { "type": "object", "default": {} },
-    "customBreakpoints":       { "type": "array",  "default": [] },
+    "customStyleHover": {
+      "type": "object",
+      "default": {}
+    },
+    "customStyleFocusVisible": {
+      "type": "object",
+      "default": {}
+    },
+    "responsiveStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "breakpointOverrides": {
+      "type": "object",
+      "default": {}
+    },
+    "customBreakpoints": {
+      "type": "array",
+      "default": []
+    },
     "tmsClassName": {
       "type": "string",
       "default": ""
     },
     "isDynamic": {
-    "type": "boolean",
-    "default": false
+      "type": "boolean",
+      "default": false
     },
     "dynamicSteps": {
       "type": "array",
@@ -106,10 +123,22 @@
       "type": "string",
       "default": "current"
     },
-    "truncateEnabled": { "type": "boolean", "default": false },
-    "truncateLength":  { "type": "number",  "default": 200 },
-    "truncateUnit":    { "type": "string",  "default": "characters" },
-    "truncateSuffix":  { "type": "string",  "default": "..." }
+    "truncateEnabled": {
+      "type": "boolean",
+      "default": false
+    },
+    "truncateLength": {
+      "type": "number",
+      "default": 200
+    },
+    "truncateUnit": {
+      "type": "string",
+      "default": "characters"
+    },
+    "truncateSuffix": {
+      "type": "string",
+      "default": "..."
+    }
   },
   "supports": {
     "html": false,

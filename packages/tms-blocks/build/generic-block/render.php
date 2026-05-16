@@ -27,7 +27,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     $unique_id         = $attributes['uniqueId'] ?? '';
     $block_class_name  = ! empty( $block_slug ) ? "tmsblocks-{$block_slug}" : '';
-    $unique_class_name = ! empty( $unique_id ) ? "tmsblocks-{$block_slug}-{$unique_id}" : '';
+    $unique_class_name = ! empty( $unique_id )
+        ? sanitize_html_class( "tmsblocks-{$block_slug}-{$unique_id}" )
+        : '';
 
     // -- Attribute extraction -------------------------------------------------
 
@@ -163,7 +165,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             $attrs .= ' ' . esc_attr( (string) $attr_name ) . '="' . esc_attr( (string) $attr_value ) . '"';
         }
     }
-    if ( ! empty( $extra_attrs ) ) { $attrs .= $extra_attrs; }
+    if ( ! empty( $extra_attrs ) ) { $attrs .= $extra_attrs; } // $extra_attrs is already escaped above
 
     // -- Inline styles --------------------------------------------------------
 
@@ -174,7 +176,7 @@ if ( ! defined( 'ABSPATH' ) ) {
         $all_css .= "body .{$unique_class_name} { {$custom_style} }\n";
     }
     if ( $custom_style_hover && $unique_class_name ) {
-        $all_css .= "body .{$unique_class_name}:hover { {$custom_style_hover} }\n";
+        $all_css .= "@media (hover: hover) and (pointer: fine) { body .{$unique_class_name}:hover { {$custom_style_hover} } }\n";
     }
     if ( $custom_style_focus_visible && $unique_class_name ) {
         $all_css .= "body .{$unique_class_name}:focus-visible { {$custom_style_focus_visible} }\n";
@@ -196,12 +198,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     // -- Output ---------------------------------------------------------------
 
-    // Security boundary: the wrapper tag is hardened with tag_escape(); every attribute
-    // value is individually escaped with esc_attr() / esc_url() before being concatenated
-    // into $attrs. $content is the WordPress-core-rendered inner block HTML — applying
-    // wp_kses() here would strip legitimate nested markup, so it is intentionally left
-    // unsanitized. No post-assembly filter is applied, eliminating any late
-    // arbitrary-HTML injection point.
-    $output = "<{$tag}{$attrs}>" . $content . "</{$tag}>";
-
-    echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    // Security boundary: the wrapper tag is hardened with tag_escape(). Attribute
+    // values are filtered as a structured array before assembly, then individually
+    // escaped with esc_attr() — event handler attributes (on*) are blocked at
+    // assembly time. $content is WordPress-core-rendered inner block HTML; applying
+    // wp_kses() would strip legitimate nested markup so it is intentionally
+    // left as-is, matching the pattern used by core/group and core/columns.
+    $tag = tag_escape( $tag );
+    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    echo "<{$tag}{$attrs}>" . $content . "</{$tag}>"; 

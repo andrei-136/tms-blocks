@@ -51,12 +51,30 @@
       "type": "array",
       "default": []
     },
-    "customStyle":             { "type": "object", "default": {} },
-    "customStyleHover":        { "type": "object", "default": {} },
-    "customStyleFocusVisible": { "type": "object", "default": {} },
-    "responsiveStyle":         { "type": "object", "default": {} },
-    "breakpointOverrides":     { "type": "object", "default": {} },
-    "customBreakpoints":       { "type": "array",  "default": [] },
+    "customStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "customStyleHover": {
+      "type": "object",
+      "default": {}
+    },
+    "customStyleFocusVisible": {
+      "type": "object",
+      "default": {}
+    },
+    "responsiveStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "breakpointOverrides": {
+      "type": "object",
+      "default": {}
+    },
+    "customBreakpoints": {
+      "type": "array",
+      "default": []
+    },
     "tmsClassName": {
       "type": "string",
       "default": ""

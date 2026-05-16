@@ -55,10 +55,22 @@
       "type": "object",
       "default": {}
     },
-    "responsiveStyle":     { "type": "object", "default": {} },
-    "itemResponsiveStyle": { "type": "object", "default": {} },
-    "breakpointOverrides": { "type": "object", "default": {} },
-    "customBreakpoints":   { "type": "array",  "default": [] },
+    "responsiveStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "itemResponsiveStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "breakpointOverrides": {
+      "type": "object",
+      "default": {}
+    },
+    "customBreakpoints": {
+      "type": "array",
+      "default": []
+    },
     "path": {
       "type": "string",
       "default": ""

@@ -20,7 +20,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     // -- Block identity -------------------------------------------------------
 
     $unique_id         = $attributes['uniqueId'] ?? '';
-    $unique_class_name = ! empty( $unique_id ) ? "tmsblocks-img-{$unique_id}" : '';
+    $unique_class_name = ! empty( $unique_id )
+        ? sanitize_html_class( "tmsblocks-img-{$unique_id}" )
+        : '';
     $tmsblocks_class   = trim( preg_replace( '/\s+/', ' ', $attributes['tmsClassName'] ?? '' ) );
 
     // -- Resolve post ID ------------------------------------------------------
@@ -140,7 +142,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     if ( $unique_class_name ) {
         if ( $custom_style )               { $all_css .= "body .{$unique_class_name} { {$custom_style} }\n"; }
-        if ( $custom_style_hover )         { $all_css .= "body .{$unique_class_name}:hover { {$custom_style_hover} }\n"; }
+        if ( $custom_style_hover )         { $all_css .= "@media (hover: hover) and (pointer: fine) { body .{$unique_class_name}:hover { {$custom_style_hover} } }\n"; }
         if ( $custom_style_focus_visible ) { $all_css .= "body .{$unique_class_name}:focus-visible { {$custom_style_focus_visible} }\n"; }
     }
 

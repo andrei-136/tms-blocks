@@ -10,7 +10,9 @@
       "type": "boolean",
       "default": true
     },
-    "uniqueId": { "type": "string" },
+    "uniqueId": {
+      "type": "string"
+    },
     "tagName": {
       "type": "string",
       "default": "ul"
@@ -39,11 +41,26 @@
       "type": "object",
       "default": {}
     },
-    "customStyleHover":        { "type": "object", "default": {} },
-    "customStyleFocusVisible": { "type": "object", "default": {} },
-    "responsiveStyle":         { "type": "object", "default": {} },
-    "breakpointOverrides":     { "type": "object", "default": {} },
-    "customBreakpoints":       { "type": "array",  "default": [] },
+    "customStyleHover": {
+      "type": "object",
+      "default": {}
+    },
+    "customStyleFocusVisible": {
+      "type": "object",
+      "default": {}
+    },
+    "responsiveStyle": {
+      "type": "object",
+      "default": {}
+    },
+    "breakpointOverrides": {
+      "type": "object",
+      "default": {}
+    },
+    "customBreakpoints": {
+      "type": "array",
+      "default": []
+    },
     "transitionConfig": {
       "type": "object",
       "default": {}

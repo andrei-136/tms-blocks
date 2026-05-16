@@ -10,7 +10,9 @@
       "type": "boolean",
       "default": true
     },
-     "uniqueId": { "type": "string" },
+    "uniqueId": {
+      "type": "string"
+    },
     "tagName": {
       "type": "string",
       "default": "div"
@@ -56,17 +58,29 @@
       "default": {}
     },
     "tmsClassName": {
-       "type": "string",
-        "default": "" 
+      "type": "string",
+      "default": ""
     },
     "transitionConfig": {
       "type": "object",
       "default": {
-        "global": { "duration": "0.2", "durationUnit": "s", "easing": "ease", "delay": "0", "delayUnit": "s" },
+        "global": {
+          "duration": "0.2",
+          "durationUnit": "s",
+          "easing": "ease",
+          "delay": "0",
+          "delayUnit": "s"
+        },
         "overrides": {},
         "states": {
-          "hover": { "linked": true, "unlinkedProperties": [] },
-          "focusVisible": { "linked": true, "unlinkedProperties": [] }
+          "hover": {
+            "linked": true,
+            "unlinkedProperties": []
+          },
+          "focusVisible": {
+            "linked": true,
+            "unlinkedProperties": []
+          }
         }
       }
     }

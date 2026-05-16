@@ -35,7 +35,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     $tag               = tag_escape( ! empty( $attributes['tagName'] ) ? $attributes['tagName'] : 'div' );
     $unique_id         = $attributes['uniqueId'] ?? '';
-    $unique_class_name = ! empty( $unique_id ) ? "tmsblocks-post-context-{$unique_id}" : '';
+    $unique_class_name = ! empty( $unique_id )
+        ? sanitize_html_class( "tmsblocks-post-context-{$unique_id}" )
+        : '';
     $tmsblocks_class   = trim( preg_replace( '/\s+/', ' ', $attributes['tmsClassName'] ?? '' ) );
     $anchor_id         = trim( $attributes['anchorId']  ?? '' );
     $aria_label        = trim( $attributes['ariaLabel'] ?? '' );
@@ -52,7 +54,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     if ( $unique_class_name ) {
         if ( $custom_style )               { $all_css .= "body .{$unique_class_name} { {$custom_style} }\n"; }
-        if ( $custom_style_hover )         { $all_css .= "body .{$unique_class_name}:hover { {$custom_style_hover} }\n"; }
+        if ( $custom_style_hover )         { $all_css .= "@media (hover: hover) and (pointer: fine) { body .{$unique_class_name}:hover { {$custom_style_hover} } }\n"; }
         if ( $custom_style_focus_visible ) { $all_css .= "body .{$unique_class_name}:focus-visible { {$custom_style_focus_visible} }\n"; }
     }
 
@@ -141,8 +143,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     // value is individually escaped with esc_attr() before being concatenated into
     // $attrs. $content is the WordPress-core-rendered inner block HTML — applying
     // wp_kses() here would strip legitimate nested markup, so it is intentionally left
-    // unsanitized. No post-assembly filter is applied, eliminating any late
-    // arbitrary-HTML injection point.
-    $output = "<{$tag}{$attrs}>{$content}</{$tag}>";
-
-    echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    // unsanitized.  
+    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    $tag = tag_escape( $tag );
+    echo "<{$tag}{$attrs}>{$content}</{$tag}>";

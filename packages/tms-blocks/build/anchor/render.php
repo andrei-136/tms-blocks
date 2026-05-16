@@ -21,7 +21,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
     $unique_id         = $attributes['uniqueId'] ?? '';
     $block_class_name  = ! empty( $block_slug ) ? "tmsblocks-{$block_slug}" : '';
-    $unique_class_name = ! empty( $unique_id ) ? "tmsblocks-{$block_slug}-{$unique_id}" : '';
+    $unique_class_name = ! empty( $unique_id )
+        ? sanitize_html_class( "tmsblocks-{$block_slug}-{$unique_id}" )
+        : '';
 
     // -- Attribute extraction -------------------------------------------------
 
@@ -245,7 +247,7 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
         $all_css .= "body .{$unique_class_name} { {$custom_style} }\n";
     }
     if ( $custom_style_hover && $unique_class_name ) {
-        $all_css .= "body .{$unique_class_name}:hover { {$custom_style_hover} }\n";
+        $all_css .= "@media (hover: hover) and (pointer: fine) { body .{$unique_class_name}:hover { {$custom_style_hover} } }\n";
     }
     if ( $custom_style_focus_visible && $unique_class_name ) {
         $all_css .= "body .{$unique_class_name}:focus-visible { {$custom_style_focus_visible} }\n";
@@ -300,8 +302,6 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
     // with esc_attr() before being concatenated into $attrs. The owned inner text is
     // sanitized with wp_kses_post(). $inner_blocks_content is the WordPress-core-rendered
     // inner block HTML — applying wp_kses() here would strip legitimate nested markup,
-    // so it is intentionally left unsanitized. No post-assembly filter is applied,
-    // eliminating any late arbitrary-HTML injection point.
-    $output = '<a' . $attrs . '>' . $inner_content . '</a>';
-
-    echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    // so it is intentionally left unsanitized. 
+    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    echo '<a' . $attrs . '>' . $inner_content . '</a>'; 
