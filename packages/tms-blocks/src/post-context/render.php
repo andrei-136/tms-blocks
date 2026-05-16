@@ -143,8 +143,7 @@ if ( ! defined( 'ABSPATH' ) ) {
     // value is individually escaped with esc_attr() before being concatenated into
     // $attrs. $content is the WordPress-core-rendered inner block HTML — applying
     // wp_kses() here would strip legitimate nested markup, so it is intentionally left
-    // unsanitized. No post-assembly filter is applied, eliminating any late
-    // arbitrary-HTML injection point.
-    $output = "<{$tag}{$attrs}>{$content}</{$tag}>";
-
-    echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    // unsanitized.  
+    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    $tag = tag_escape( $tag );
+    echo "<{$tag}{$attrs}>{$content}</{$tag}>";

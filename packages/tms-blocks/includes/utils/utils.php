@@ -248,6 +248,9 @@ function tmsblocks_add_inline_style_once( $handle, $css, $key = '' ) {
 
     $added[ $registry_key ] = true;
 
+    // All CSS passed here is built by tmsblocks_process_custom_styles() /
+    // tmsblocks_process_responsive_styles(), where every value is sanitized
+    // via tmsblocks_sanitize_css_value()
     return wp_add_inline_style( $handle, $css );
 }
 

@@ -204,7 +204,6 @@ if ( ! defined( 'ABSPATH' ) ) {
     // assembly time. $content is WordPress-core-rendered inner block HTML; applying
     // wp_kses() would strip legitimate nested markup so it is intentionally
     // left as-is, matching the pattern used by core/group and core/columns.
-    // No filter is applied to the final assembled HTML string.
-    $output = "<{$tag}{$attrs}>" . $content . "</{$tag}>";
-
-    echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    $tag = tag_escape( $tag );
+    // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+    echo "<{$tag}{$attrs}>" . $content . "</{$tag}>"; 
