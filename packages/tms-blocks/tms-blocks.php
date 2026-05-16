@@ -90,6 +90,33 @@ function tmsblocks_block_categories( $categories ) {
 add_filter( 'block_categories_all', 'tmsblocks_block_categories', 10, 1 );
 
 
+/**
+ * Sanitize a CSS value for safe use in an inline style block.
+ *
+ * Strips characters that could break out of a style declaration or inject
+ * markup. Values originate from the block editor (authenticated context);
+ * the threat model is a compromised editor account rather than anonymous
+ * public input. WordPress has no esc_css() equivalent, so injection
+ * characters are stripped explicitly.
+ *
+ * @param string $value Raw CSS value.
+ * @return string Sanitized CSS value.
+ */
+function tmsblocks_sanitize_css_value( $value ) {
+    $value = (string) $value;
+
+    // Strip anything that could close the style block or inject markup.
+    $value = str_replace(
+        [ '</style>', '</Style>', '</STYLE>', '</', '/*', '*/' ],
+        '',
+        $value
+    );
+
+    // Remove newlines which could inject new CSS rules outside the declaration.
+    $value = preg_replace( '/[\r\n]+/', ' ', $value );
+
+    return trim( $value );
+}
 
 /**
  * Process custom styles from attributes and return style string for get_block_wrapper_attributes()
@@ -106,13 +133,20 @@ function tmsblocks_process_custom_styles( $custom_style_attr ) {
 
     $style_array = array();
     foreach ( $custom_style_attr as $prop => $value ) {
-        $css_prop = strtolower( preg_replace( '/([a-z])([A-Z])/', '$1-$2', $prop ) );
+        // Convert camelCase to kebab-case then restrict to valid CSS property chars.
+        $css_prop = strtolower( preg_replace( '/([a-z])([A-Z])/', '$1-$2', (string) $prop ) );
+        $css_prop = preg_replace( '/[^a-z0-9-]/', '', $css_prop );
+
+        if ( empty( $css_prop ) ) {
+            continue;
+        }
 
         if ( is_array( $value ) && isset( $value['value'] ) && $value['value'] !== '' ) {
             $unit = $value['unit'] ?? 'px';
 
             if ( $unit === 'size-presets' ) {
-                $css_value = 'var(--wp--preset--spacing--' . $value['value'] . ')';
+                $slug      = preg_replace( '/[^a-z0-9-]/', '', (string) $value['value'] );
+                $css_value = 'var(--wp--preset--spacing--' . $slug . ')';
             } elseif ( $unit === 'layout-presets' ) {
                 if ( $value['value'] === 'content' ) {
                     $css_value = 'var(--wp--style--global--content-size)';
@@ -122,17 +156,25 @@ function tmsblocks_process_custom_styles( $custom_style_attr ) {
                     continue;
                 }
             } elseif ( $unit === 'font-size-presets' ) {
-                $css_value = 'var(--wp--preset--font-size--' . $value['value'] . ')';
+                $slug      = preg_replace( '/[^a-z0-9-]/', '', (string) $value['value'] );
+                $css_value = 'var(--wp--preset--font-size--' . $slug . ')';
             } elseif ( in_array( $unit, $keyword_units, true ) || $unit === 'custom' || $unit === 'unitless' || $unit === 'string' ) {
-                $css_value = $value['value'];
+                $css_value = tmsblocks_sanitize_css_value( $value['value'] );
             } else {
-                $css_value = $value['value'] . $unit;
+                $css_value = tmsblocks_sanitize_css_value( $value['value'] ) . $unit;
+            }
+
+            if ( $css_value === '' ) {
+                continue;
             }
 
             $style_array[] = $css_prop . ':' . $css_value;
 
         } elseif ( is_string( $value ) && $value !== '' ) {
-            $style_array[] = $css_prop . ':' . $value;
+            $css_value = tmsblocks_sanitize_css_value( $value );
+            if ( $css_value !== '' ) {
+                $style_array[] = $css_prop . ':' . $css_value;
+            }
         }
     }
 

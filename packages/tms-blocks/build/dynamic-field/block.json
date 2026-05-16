@@ -2,7 +2,7 @@
   "apiVersion": 3,
   "name": "tmsblocks/dynamic-field",
   "title": "TMS Dynamic Field",
-  "category": "widgets",
+  "category": "tms-blocks",
   "icon": "filter",
   "description": "Displays data from the current query context using a path builder.",
   "usesContext": [

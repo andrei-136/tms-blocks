@@ -2,7 +2,7 @@
   "apiVersion": 3,
   "name": "tmsblocks/heading",
   "title": "TMS Heading",
-  "category": "widgets",
+  "category": "tms-blocks",
   "icon": "heading",
   "description": "Custom heading with optional letter span wrapping.",
   "usesContext": [

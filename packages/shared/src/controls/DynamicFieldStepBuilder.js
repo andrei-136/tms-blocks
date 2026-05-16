@@ -232,8 +232,6 @@ export default function DynamicFieldStepBuilder({
     if (!preset) return;
     if (preset.steps && !preset.param) {
       onPathChange?.(preset.steps, preset.value);
-    } else {
-      onPathChange?.([], '');
     }
   };
 

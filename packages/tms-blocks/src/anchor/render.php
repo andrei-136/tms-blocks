@@ -24,7 +24,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
     $unique_id         = $attributes['uniqueId'] ?? '';
     $block_class_name  = ! empty( $block_slug ) ? "tmsblocks-{$block_slug}" : '';
-    $unique_class_name = ! empty( $unique_id ) ? "tmsblocks-{$block_slug}-{$unique_id}" : '';
+    $unique_class_name = ! empty( $unique_id )
+        ? sanitize_html_class( "tmsblocks-{$block_slug}-{$unique_id}" )
+        : '';
 
     // -- Attribute extraction -------------------------------------------------
 
@@ -43,9 +45,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
     $inner_text_dynamic_path   = isset( $attributes['innerTextDynamicPath'] ) ? trim( $attributes['innerTextDynamicPath'] ) : '';
     $is_inner_text_dynamic     = ! empty( $attributes['isInnerTextDynamic'] );
 
-    $rel    = isset( $attributes['rel'] )             ? esc_attr( trim( $attributes['rel'] ) )             : '';
-    $refpol = isset( $attributes['referrerPolicy'] )  ? esc_attr( trim( $attributes['referrerPolicy'] ) )  : '';
-    $target = isset( $attributes['target'] )          ? esc_attr( trim( $attributes['target'] ) )          : '';
+    $rel    = isset( $attributes['rel'] )             ? trim( $attributes['rel'] )             : '';
+    $refpol = isset( $attributes['referrerPolicy'] )  ? trim( $attributes['referrerPolicy'] )  : '';
+    $target = isset( $attributes['target'] )          ? trim( $attributes['target'] )          : '';
 
     $source_post_id = isset( $attributes['sourcePostId'] ) ? (int) $attributes['sourcePostId'] : 0;
     $post_id = $source_post_id > 0
@@ -204,19 +206,40 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
     $all_classes = apply_filters( 'tmsblocks/block_classes',               $all_classes, $attributes, $block );
     $all_classes = apply_filters( "tmsblocks/block_classes/{$block_slug}", $all_classes, $attributes, $block );
 
-    // -- Build attribute string -----------------------------------------------
+    // -- Build attributes map -------------------------------------------------
 
-    $attrs = ' href="' . $href . '"';
-    if ( ! empty( $anchor_id ) )   { $attrs .= ' id="'         . esc_attr( $anchor_id )                  . '"'; }
-    if ( ! empty( $all_classes ) ) { $attrs .= ' class="'      . esc_attr( implode( ' ', $all_classes ) ) . '"'; }
-    if ( ! empty( $aria_label ) )  { $attrs .= ' aria-label="' . esc_attr( $aria_label )                  . '"'; }
-    if ( ! empty( $aria_role ) )   { $attrs .= ' role="'       . esc_attr( $aria_role )                   . '"'; }
-    if ( ! empty( $rel ) )         { $attrs .= ' rel="'        . $rel                                     . '"'; }
-    if ( ! empty( $refpol ) )      { $attrs .= ' referrerpolicy="' . $refpol                              . '"'; }
-    if ( ! empty( $target ) )      { $attrs .= ' target="'     . $target                                  . '"'; }
+    $attrs_map = [ 'href' => $href ];
+    if ( ! empty( $anchor_id ) )   { $attrs_map['id'] = $anchor_id; }
+    if ( ! empty( $all_classes ) ) { $attrs_map['class'] = implode( ' ', $all_classes ); }
+    if ( ! empty( $aria_label ) )  { $attrs_map['aria-label'] = $aria_label; }
+    if ( ! empty( $aria_role ) )   { $attrs_map['role'] = $aria_role; }
+    if ( ! empty( $rel ) )         { $attrs_map['rel'] = $rel; }
+    if ( ! empty( $refpol ) )      { $attrs_map['referrerpolicy'] = $refpol; }
+    if ( ! empty( $target ) )      { $attrs_map['target'] = $target; }
+
+    $attrs_map = apply_filters( "tmsblocks/block_attrs/{$block_slug}", $attrs_map, $attributes, $block );
+    $attrs_map = apply_filters( 'tmsblocks/block_attrs', $attrs_map, $attributes, $block );
+
+    // -- Assemble escaped attribute string ------------------------------------
+
+    $attrs = '';
+    if ( is_array( $attrs_map ) ) {
+        foreach ( $attrs_map as $attr_name => $attr_value ) {
+            if ( ! preg_match( '/^[a-zA-Z][a-zA-Z0-9_:-]*$/', (string) $attr_name ) ) {
+                continue;
+            }
+            if ( ! is_scalar( $attr_value ) ) {
+                continue;
+            }
+
+            $escaped_value = strtolower( (string) $attr_name ) === 'href'
+                ? esc_url( (string) $attr_value )
+                : esc_attr( (string) $attr_value );
+
+            $attrs .= ' ' . esc_attr( (string) $attr_name ) . '="' . $escaped_value . '"';
+        }
+    }
     if ( ! empty( $extra_attrs ) ) { $attrs .= $extra_attrs; }
-
-    $attrs = apply_filters( "tmsblocks/block_attrs/{$block_slug}", $attrs, $attributes, $block );
 
     // -- Inline styles --------------------------------------------------------
 
@@ -277,32 +300,13 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
     // -- Output ---------------------------------------------------------------
 
+    // Security boundary: href is escaped with esc_url(); rel, referrerpolicy, and target
+    // are escaped with esc_attr() at assignment; all other attribute values are escaped
+    // with esc_attr() before being concatenated into $attrs. The owned inner text is
+    // sanitized with wp_kses_post(). $inner_blocks_content is the WordPress-core-rendered
+    // inner block HTML — applying wp_kses() here would strip legitimate nested markup,
+    // so it is intentionally left unsanitized. No post-assembly filter is applied,
+    // eliminating any late arbitrary-HTML injection point.
     $output = '<a' . $attrs . '>' . $inner_content . '</a>';
 
-    /**
-     * Filters the final HTML output for any TMS block.
-     *
-     * Wrapper attributes and owned RichText are sanitized before this point.
-     * Callback authors are responsible for returning safe HTML because nested
-     * block output is preserved and not re-sanitized after this filter.
-     *
-     * @param string   $output      The complete HTML string.
-     * @param array    $attributes  The block attributes.
-     * @param WP_Block $block       The block instance.
-     */
-    $output = apply_filters( 'tmsblocks/block_output', $output, $attributes, $block );
-
-    /**
-     * Filters the final HTML output for a specific TMS block.
-     *
-     * Callback authors are responsible for returning safe HTML because nested
-     * block output is preserved and not re-sanitized after this filter.
-     *
-     * @param string   $output      The complete HTML string.
-     * @param array    $attributes  The block attributes.
-     * @param WP_Block $block       The block instance.
-     */
-    $output = apply_filters( "tmsblocks/block_output/{$block_slug}", $output, $attributes, $block );
-
-    // Wrapper attributes and owned RichText are sanitized above; do not re-sanitize child block HTML here.
     echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

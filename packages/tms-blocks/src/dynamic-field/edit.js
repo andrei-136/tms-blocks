@@ -71,9 +71,12 @@ const ITEM_STYLE_INCLUDE = {
 
 const DEFAULT_PREVIEW_LIMIT = 5;
 
+const SAMPLE_IMAGE_SVG = '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 120 80"><rect width="120" height="80" fill="#e0e0e0"/><text x="60" y="44" text-anchor="middle" font-family="Arial,sans-serif" font-size="12" fill="#888">img</text></svg>';
+const SAMPLE_IMAGE_DATA_URI = `data:image/svg+xml;utf8,${encodeURIComponent(SAMPLE_IMAGE_SVG)}`;
+
 const SAMPLE_VALUES = {
   text:  'Sample text',
-  image: 'https://placehold.co/120x80/e0e0e0/888?text=img',
+  image: SAMPLE_IMAGE_DATA_URI,
   url:   '#',
 };
 

@@ -20,7 +20,9 @@ if ( ! defined( 'ABSPATH' ) ) {
     // -- Block identity -------------------------------------------------------
 
     $unique_id         = $attributes['uniqueId'] ?? '';
-    $unique_class_name = ! empty( $unique_id ) ? "tmsblocks-img-{$unique_id}" : '';
+    $unique_class_name = ! empty( $unique_id )
+        ? sanitize_html_class( "tmsblocks-img-{$unique_id}" )
+        : '';
     $tmsblocks_class   = trim( preg_replace( '/\s+/', ' ', $attributes['tmsClassName'] ?? '' ) );
 
     // -- Resolve post ID ------------------------------------------------------

@@ -2,7 +2,7 @@
   "apiVersion": 3,
   "name": "tmsblocks/post-context",
   "title": "Post Context",
-  "category": "widgets",
+  "category": "tms-blocks",
   "icon": "database",
   "description": "Provides a post context to child blocks. Children can pull fields from the scoped post.",
   "usesContext": [ "postId", "postType" ],

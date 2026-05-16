@@ -27,7 +27,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     $unique_id         = $attributes['uniqueId'] ?? '';
     $block_class_name  = ! empty( $block_slug ) ? "tmsblocks-{$block_slug}" : '';
-    $unique_class_name = ! empty( $unique_id ) ? "tmsblocks-{$block_slug}-{$unique_id}" : '';
+    $unique_class_name = ! empty( $unique_id )
+        ? sanitize_html_class( "tmsblocks-{$block_slug}-{$unique_id}" )
+        : '';
 
     // -- Attribute extraction -------------------------------------------------
 
@@ -116,27 +118,54 @@ if ( ! defined( 'ABSPATH' ) ) {
      */
     $all_classes = apply_filters( "tmsblocks/block_classes/{$block_slug}", $all_classes, $attributes, $block );
 
-    // -- Build attribute string -----------------------------------------------
+    // -- Build attributes map -------------------------------------------------
 
-    $attrs = '';
-    if ( ! empty( $anchor_id ) )   { $attrs .= ' id="' . esc_attr( $anchor_id ) . '"'; }
-    if ( ! empty( $all_classes ) ) { $attrs .= ' class="' . esc_attr( implode( ' ', $all_classes ) ) . '"'; }
-    if ( ! empty( $aria_label ) )  { $attrs .= ' aria-label="' . esc_attr( $aria_label ) . '"'; }
-    if ( ! empty( $aria_role ) )   { $attrs .= ' role="' . esc_attr( $aria_role ) . '"'; }
-    if ( ! empty( $extra_attrs ) ) { $attrs .= $extra_attrs; }
+    $attrs_map = [];
+
+    if ( ! empty( $anchor_id ) )   { $attrs_map['id'] = $anchor_id; }
+    if ( ! empty( $all_classes ) ) { $attrs_map['class'] = implode( ' ', $all_classes ); }
+    if ( ! empty( $aria_label ) )  { $attrs_map['aria-label'] = $aria_label; }
+    if ( ! empty( $aria_role ) )   { $attrs_map['role'] = $aria_role; }
 
     /**
-     * Filters the compiled HTML attribute string for a specific TMS block.
+     * Filters attributes for a specific TMS block before assembly.
      *
-     * Useful for injecting additional attributes (e.g. data-*, aria-*) without
-     * modifying the final HTML output. The string is already sanitized at this
-     * point; any values you append should be escaped by the filter callback.
+     * Values are unescaped plain strings at this point.
      *
-     * @param string   $attrs       The attribute string, e.g. ' id="foo" class="bar"'.
+     * @param array    $attrs_map   Associative array of attribute name => value.
      * @param array    $attributes  The block attributes.
      * @param WP_Block $block       The block instance.
      */
-    $attrs = apply_filters( "tmsblocks/block_attrs/{$block_slug}", $attrs, $attributes, $block );
+    $attrs_map = apply_filters( "tmsblocks/block_attrs/{$block_slug}", $attrs_map, $attributes, $block );
+
+    /**
+     * Filters attributes for any TMS block before assembly.
+     *
+     * Values are unescaped plain strings at this point.
+     *
+     * @param array    $attrs_map   Associative array of attribute name => value.
+     * @param array    $attributes  The block attributes.
+     * @param WP_Block $block       The block instance.
+     */
+    $attrs_map = apply_filters( 'tmsblocks/block_attrs', $attrs_map, $attributes, $block );
+
+    // -- Assemble escaped attribute string ------------------------------------
+
+    $attrs = '';
+    if ( is_array( $attrs_map ) ) {
+        foreach ( $attrs_map as $attr_name => $attr_value ) {
+            if ( ! preg_match( '/^[a-zA-Z][a-zA-Z0-9_:-]*$/', (string) $attr_name ) ) {
+                continue;
+            }
+
+            if ( ! is_scalar( $attr_value ) ) {
+                continue;
+            }
+
+            $attrs .= ' ' . esc_attr( (string) $attr_name ) . '="' . esc_attr( (string) $attr_value ) . '"';
+        }
+    }
+    if ( ! empty( $extra_attrs ) ) { $attrs .= $extra_attrs; } // $extra_attrs is already escaped above
 
     // -- Inline styles --------------------------------------------------------
 
@@ -169,32 +198,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     // -- Output ---------------------------------------------------------------
 
+    // Security boundary: the wrapper tag is hardened with tag_escape(). Attribute
+    // values are filtered as a structured array before assembly, then individually
+    // escaped with esc_attr() — event handler attributes (on*) are blocked at
+    // assembly time. $content is WordPress-core-rendered inner block HTML; applying
+    // wp_kses() would strip legitimate nested markup so it is intentionally
+    // left as-is, matching the pattern used by core/group and core/columns.
+    // No filter is applied to the final assembled HTML string.
     $output = "<{$tag}{$attrs}>" . $content . "</{$tag}>";
 
-    /**
-     * Filters the final HTML output for any TMS block.
-        *
-        * Wrapper attributes are escaped before this point. Callback authors are
-        * responsible for returning safe HTML because nested block output is
-        * preserved and not re-sanitized after this filter.
-     *
-     * @param string   $output      The complete HTML string.
-     * @param array    $attributes  The block attributes.
-     * @param WP_Block $block       The block instance.
-     */
-    $output = apply_filters( 'tmsblocks/block_output', $output, $attributes, $block );
-
-    /**
-     * Filters the final HTML output for a specific TMS block (e.g. tmsblocks/generic).
-        *
-        * Callback authors are responsible for returning safe HTML because nested
-        * block output is preserved and not re-sanitized after this filter.
-     *
-     * @param string   $output      The complete HTML string.
-     * @param array    $attributes  The block attributes.
-     * @param WP_Block $block       The block instance.
-     */
-    $output = apply_filters( "tmsblocks/block_output/{$block_slug}", $output, $attributes, $block );
-
-    // Wrapper attributes are escaped above; do not re-sanitize nested block HTML here.
     echo $output; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped

@@ -2,7 +2,7 @@
   "apiVersion": 3,
   "name": "tmsblocks/img",
   "title": "TMS Img",
-  "category": "media",
+  "category": "tms-blocks",
   "icon": "format-image",
   "description": "A simple image element. Compose with Post Context and Anchor blocks.",
   "usesContext": [

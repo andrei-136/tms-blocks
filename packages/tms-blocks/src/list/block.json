@@ -2,7 +2,7 @@
   "apiVersion": 3,
   "name": "tmsblocks/list-block",
   "title": "TMS List",
-  "category": "widgets",
+  "category": "tms-blocks",
   "icon": "editor-ul",
   "description": "A customizable list block (ul, ol) with inner list items.",
   "attributes": {

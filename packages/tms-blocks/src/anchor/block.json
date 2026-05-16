@@ -2,7 +2,7 @@
   "apiVersion": 3,
   "name": "tmsblocks/anchor",
   "title": "TMS Link",
-  "category": "widgets",
+  "category": "tms-blocks",
   "icon": "admin-links",
   "description": "Adds an anchor point you can link to by ID.",
   "usesContext": [

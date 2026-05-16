@@ -26,7 +26,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
     $unique_id         = $attributes['uniqueId'] ?? '';
     $block_class_name  = ! empty( $block_slug ) ? "tmsblocks-{$block_slug}" : '';
-    $unique_class_name = ! empty( $unique_id ) ? "tmsblocks-{$block_slug}-{$unique_id}" : '';
+    $unique_class_name = ! empty( $unique_id )
+        ? sanitize_html_class( "tmsblocks-{$block_slug}-{$unique_id}" )
+        : '';
 
     // -- Attribute extraction -------------------------------------------------
 

@@ -491,10 +491,6 @@ function tmsblocks_render_dynamic_field_item( $value, $href, $link_text, $attrib
 
 // -- REST endpoints ---------------------------------------------------------
 
-function tmsblocks_dynamic_field_permissions() {
-    return current_user_can( 'edit_posts' );
-}
-
 function tmsblocks_get_dynamic_field_preview( WP_REST_Request $request ) {
     $post_id = absint( $request->get_param( 'postId' ) );
     $path    = $request->get_param( 'path' );
@@ -599,7 +595,15 @@ function tmsblocks_get_user_meta_keys( WP_REST_Request $request ) {
 add_action( 'rest_api_init', function () {
     register_rest_route( 'tmsblocks/v1', '/meta-keys', array(
         'methods'             => 'GET',
-        'permission_callback' => 'tmsblocks_dynamic_field_permissions',
+        'permission_callback' => function ( WP_REST_Request $request ) {
+            $post_type = sanitize_key( $request->get_param( 'postType' ) ?: 'post' );
+            if ( ! post_type_exists( $post_type ) ) {
+                return new WP_Error( 'tmsblocks_invalid_post_type', 'Invalid post type.', array( 'status' => 400 ) );
+            }
+
+            $post_type_object = get_post_type_object( $post_type );
+            return $post_type_object ? current_user_can( $post_type_object->cap->edit_posts ) : false;
+        },
         'callback'            => 'tmsblocks_get_post_meta_keys',
         'args'                => array(
             'postType' => array( 'sanitize_callback' => 'sanitize_key' ),
@@ -608,7 +612,15 @@ add_action( 'rest_api_init', function () {
 
     register_rest_route( 'tmsblocks/v1', '/term-meta-keys', array(
         'methods'             => 'GET',
-        'permission_callback' => 'tmsblocks_dynamic_field_permissions',
+        'permission_callback' => function ( WP_REST_Request $request ) {
+            $taxonomy = sanitize_key( $request->get_param( 'taxonomy' ) ?: '' );
+            if ( ! taxonomy_exists( $taxonomy ) ) {
+                return new WP_Error( 'tmsblocks_invalid_taxonomy', 'Invalid taxonomy.', array( 'status' => 400 ) );
+            }
+
+            $taxonomy_object = get_taxonomy( $taxonomy );
+            return $taxonomy_object ? current_user_can( $taxonomy_object->cap->manage_terms ) : false;
+        },
         'callback'            => 'tmsblocks_get_term_meta_keys',
         'args'                => array(
             'taxonomy' => array( 'sanitize_callback' => 'sanitize_key', 'required' => true ),
@@ -617,13 +629,22 @@ add_action( 'rest_api_init', function () {
 
     register_rest_route( 'tmsblocks/v1', '/user-meta-keys', array(
         'methods'             => 'GET',
-        'permission_callback' => 'tmsblocks_dynamic_field_permissions',
+        'permission_callback' => function () {
+            return current_user_can( 'list_users' );
+        },
         'callback'            => 'tmsblocks_get_user_meta_keys',
     ) );
 
     register_rest_route( 'tmsblocks/v1', '/dynamic-field-preview', array(
         'methods'             => 'POST',
-        'permission_callback' => 'tmsblocks_dynamic_field_permissions',
+        'permission_callback' => function ( WP_REST_Request $request ) {
+            $post_id = absint( $request->get_param( 'postId' ) );
+            if ( $post_id <= 0 ) {
+                return new WP_Error( 'tmsblocks_invalid_post_id', 'Invalid post ID.', array( 'status' => 400 ) );
+            }
+
+            return current_user_can( 'edit_post', $post_id );
+        },
         'callback'            => 'tmsblocks_get_dynamic_field_preview',
         'args'                => array(
             'postId'           => array( 'sanitize_callback' => 'absint', 'required' => true ),
