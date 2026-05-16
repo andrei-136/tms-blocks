@@ -1,10 +1,7 @@
 <?php
-/**
- * TMS Anchor Block render callback.
- * 
- * phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
- * phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.InvalidPrefixPassed
- */
+// TMS Anchor Block render callback.
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedVariableFound
+// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.InvalidPrefixPassed
 
 if ( ! defined( 'ABSPATH' ) ) { exit; }
 
