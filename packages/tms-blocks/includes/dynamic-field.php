@@ -1,4 +1,3 @@
-
 <?php
 // phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.InvalidPrefixPassed -- Block filter/action names use slashes by WordPress convention.
 

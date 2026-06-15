@@ -4,7 +4,7 @@
   "title": "TMS Link",
   "category": "tms-blocks",
   "icon": "admin-links",
-  "description": "Adds an anchor point you can link to by ID.",
+  "description": "Creates a hyperlink wrapping inline or block content",
   "usesContext": [
     "postId",
     "postType",

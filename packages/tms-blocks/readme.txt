@@ -2,8 +2,8 @@
 Contributors: terriblemonster
 Tags: blocks, gutenberg, custom-blocks
 Requires at least: 6.3
-Tested up to: 6.9
-Stable tag: 1.0
+Tested up to: 7.0
+Stable tag: 1.0.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -47,6 +47,10 @@ These blocks are used to define content structure and render block output in a p
 2. Activate the plugin through the \'Plugins\' screen in WordPress.
 
 == Changelog ==
+
+= 1.0.2 =
+* Tested up to WordPress 7.0
+
 = 1.0 =
 * Initial release.
 

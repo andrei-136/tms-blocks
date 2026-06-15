@@ -109,6 +109,12 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
         $href = $resolved !== '' ? esc_url( $resolved ) : '#';
 
     } elseif ( $href_raw !== '' ) {
+        // Replace template variables.
+        $href_raw = str_replace(
+            array( '{{page_url}}', '{{post_url}}', '{{site_url}}', '{{title}}' ),
+            array( get_permalink( $post_id ), get_permalink( $post_id ), home_url(), get_the_title( $post_id ) ),
+            $href_raw
+        );
         $href = esc_url( $href_raw );
     } else {
         $href = '#';

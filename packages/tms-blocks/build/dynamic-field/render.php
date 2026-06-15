@@ -38,6 +38,16 @@ if ( ! defined( 'ABSPATH' ) ) {
             : ( isset( $block->context['postId'] ) ? (int) $block->context['postId'] : (int) get_the_ID() )
         );
 
+    // Query providers can occasionally pass stale context IDs while rendering
+    // repeated loop items. If we're inside The Loop, prefer the active loop
+    // post ID for current-source fields so taxonomy paths resolve per item.
+    if ( $post_source !== 'specific' && function_exists( 'in_the_loop' ) && in_the_loop() ) {
+        $loop_post_id = (int) get_the_ID();
+        if ( $loop_post_id > 0 && $loop_post_id !== $post_id ) {
+            $post_id = $loop_post_id;
+        }
+    }
+
     if ( $post_id <= 0 ) {
         return;
     }

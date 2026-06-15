@@ -197,6 +197,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             if ( ! $ca_key ) continue;
             if (
                 $ca_key === 'crossorigin' ||
+                $ca_key === 'title' ||
                 preg_match( '/^data-[a-z0-9-]+$/', $ca_key )
             ) {
                 $attrs .= ' ' . esc_attr( $ca_key ) . '="' . esc_attr( $ca_val ) . '"';
@@ -246,7 +247,7 @@ if ( ! defined( 'ABSPATH' ) ) {
             foreach ( $custom_attrs_raw as $ca ) {
                 $ca_key = isset( $ca['key'] )   ? trim( (string) $ca['key'] )   : '';
                 $ca_val = isset( $ca['value'] ) ? trim( (string) $ca['value'] ) : '';
-                if ( $ca_key && ( $ca_key === 'crossorigin' || preg_match( '/^data-[a-z0-9-]+$/', $ca_key ) ) ) {
+                if ( $ca_key && ( $ca_key === 'crossorigin' || $ca_key === 'title' || preg_match( '/^data-[a-z0-9-]+$/', $ca_key ) ) ) {
                     $wp_attrs[ $ca_key ] = $ca_val;
                 }
             }
