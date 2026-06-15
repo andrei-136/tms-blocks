@@ -5,7 +5,7 @@ import { store as blockEditorStore } from '@wordpress/block-editor';
 import UnitControls, { KEYWORDS_GLOBAL, KEYWORDS_SIZING } from './UnitControls';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel } from '../style-utils';
 
 const getUnitlessValue = (value) => {
   if (!value) return '';
@@ -20,7 +20,8 @@ export default function FlexItemControls({
   customStyle = {},
   updateCustomStyle,
   forceShow = false,
-  inline = false
+  inline = false,
+  masterStyle = null
 }) {
   const isParentFlex = useSelect((select) => {
     if (!clientId) return false;
@@ -35,13 +36,15 @@ export default function FlexItemControls({
     return display === 'flex' || display === 'inline-flex';
   }, [clientId]);
 
-  const hasFlexItemOverrides = hasModifiedStyleProps(customStyle, [
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+
+  const hasFlexItemOverrides = getModificationLevel(customStyle, [
     'flexGrow',
     'flexShrink',
     'flexBasis',
     'alignSelf',
     'order'
-  ]);
+  ], masterStyle) > 0;
 
   const shouldShowPanel = isParentFlex || forceShow || hasFlexItemOverrides;
 
@@ -69,14 +72,14 @@ export default function FlexItemControls({
       <Flex gap={3}>
         <FlexItem>
           <TextControl
-            label={<ControlLabel label="Flex Grow" isSet={isStylePropSet(customStyle, 'flexGrow')} />}
+            label={<ControlLabel label="Flex Grow" level={getLevel('flexGrow')} />}
             value={flexGrowValue}
             onChange={handleUnitlessChange('flexGrow')}
           />
         </FlexItem>
         <FlexItem>
           <TextControl
-            label={<ControlLabel label="Flex Shrink" isSet={isStylePropSet(customStyle, 'flexShrink')} />}
+            label={<ControlLabel label="Flex Shrink" level={getLevel('flexShrink')} />}
             value={flexShrinkValue}
             onChange={handleUnitlessChange('flexShrink')}
           />
@@ -84,7 +87,7 @@ export default function FlexItemControls({
       </Flex>
 
       <UnitControls
-        label={<ControlLabel label="Flex Basis" isSet={isStylePropSet(customStyle, 'flexBasis')} />}
+            label={<ControlLabel label="Flex Basis" level={getLevel('flexBasis')} />}
         value={customStyle.flexBasis}
         onChange={handleBasisChange}
         allowedUnits={['px', 'rem', 'em', '%', 'vw', 'vh', 'custom', 'size-presets', 'layout-presets', 'keywords']}
@@ -94,7 +97,7 @@ export default function FlexItemControls({
       <hr style={{ margin: '16px 0', borderTop: '1px solid #ddd' }} />
 
       <SelectControl
-        label={<ControlLabel label="Align Self" isSet={isStylePropSet(customStyle, 'alignSelf')} />}
+        label={<ControlLabel label="Align Self" level={getLevel('alignSelf')} />}
         value={customStyle.alignSelf || ''}
         options={[
           { label: 'Auto (default)', value: '' },
@@ -108,7 +111,7 @@ export default function FlexItemControls({
       />
 
       <TextControl
-        label={<ControlLabel label="Order" isSet={isStylePropSet(customStyle, 'order')} />}
+        label={<ControlLabel label="Order" level={getLevel('order')} />}
         value={orderValue}
         onChange={handleUnitlessChange('order')}
       />
@@ -122,7 +125,7 @@ export default function FlexItemControls({
   if (!shouldShowPanel) return null;
 
   return (
-    <PanelBody title={<PanelTitle title="Flex Item" isModified={hasFlexItemOverrides} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Flex Item" level={getModificationLevel(customStyle, ['flexGrow','flexShrink','flexBasis','alignSelf','order'], masterStyle)} />} initialOpen={false}>
       {fields}
       {hasFlexItemOverrides && (
         <Button

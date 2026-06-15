@@ -17,7 +17,7 @@ import {
 } from '../../../shared/src/controls';
 import AnchorSettings from '../../../shared/src/controls/AnchorSettings';
 import { useCustomStyle, useUniqueId, useBreakpointStyles, useDynamicField } from '../../../shared/src/hooks';
-import { customStyleToCSSString, hasModifiedStyleProps } from '../../../shared/src/style-utils';
+import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps } from '../../../shared/src/style-utils';
 import { resolveBreakpoints } from '../../../shared/src/breakpoints';
 
 // -- Role options --------------------------------------------------------------
@@ -38,7 +38,9 @@ const ANCHOR_ROLE_OPTIONS = [
 
 // -- Shared exclude list for anchor StyleControls -----------------------------
 
-const ANCHOR_STYLE_EXCLUDE = ['BackgroundImage', 'Image', 'List', 'ListItem', 'Wrapper', 'Anchor', 'ClassName', 'Transition'];
+const ANCHOR_STYLE_EXCLUDE = ['BackgroundImage', 'Image', 'List', 'ListItem', 'Wrapper', 'Anchor', 'ClassName'];
+// Transition is excluded from hover/focus StyleControls because it is rendered
+// separately via <TransitionControls> on those tabs. The base tab includes it.
 
 const stepsToPath = (steps) => {
   if (!Array.isArray(steps)) return '';
@@ -113,6 +115,7 @@ function BreakpointStateTabs({
   clientId,
   transitionConfig,
   setTransitionConfig,
+  masterAttributes,
 }) {
   const isDesktop = activeBreakpoint === 'desktop';
 
@@ -133,10 +136,25 @@ function BreakpointStateTabs({
   const isHoverModified = hasModifiedStyleProps(hover.style, Object.keys(hover.style || {}));
   const isFocusModified = hasModifiedStyleProps(focus.style, Object.keys(focus.style || {}));
 
+  // Compute master styles for comparison (same breakpoint / state as the instance).
+  const masterBaseStyle  = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyle             ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.base         ?? {}))
+    : null;
+  const masterHoverStyle = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyleHover        ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.hover        ?? {}))
+    : null;
+  const masterFocusStyle = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyleFocusVisible ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.focusVisible ?? {}))
+    : null;
+
+  const baseLevel  = getModificationLevel(base.style,  Object.keys(base.style  || {}), masterBaseStyle);
+  const hoverLevel = getModificationLevel(hover.style, Object.keys(hover.style || {}), masterHoverStyle);
+  const focusLevel = getModificationLevel(focus.style, Object.keys(focus.style || {}), masterFocusStyle);
+
   const tabs = [
-    { name: 'base',          title: <ControlLabel label="Base"          isSet={isBaseModified}  /> },
-    { name: 'hover',         title: <ControlLabel label="Hover"         isSet={isHoverModified} /> },
-    { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" isSet={isFocusModified} /> },
+    { name: 'base',          title: <ControlLabel label="Base"          level={baseLevel}  /> },
+    { name: 'hover',         title: <ControlLabel label="Hover"         level={hoverLevel} /> },
+    { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" level={focusLevel} /> },
   ];
 
   return (
@@ -152,6 +170,7 @@ function BreakpointStateTabs({
                   stateStyles={{ hover: customStyleHover, focusVisible: customStyleFocusVisible }}
                   transitionConfig={transitionConfig}
                   setTransitionConfig={setTransitionConfig}
+                  masterTransitionConfig={masterAttributes?.transitionConfig ?? null}
                 />
               )}
               <StyleControls
@@ -162,8 +181,10 @@ function BreakpointStateTabs({
                   else setAttributes(patch);
                 }}
                 clientId={clientId}
-                exclude={ANCHOR_STYLE_EXCLUDE}
+                exclude={[...ANCHOR_STYLE_EXCLUDE, 'Transition']}
                 controlProps={{ Display: { useUtilityClasses: false } }}
+                masterStyle={masterHoverStyle}
+                masterAttributes={masterAttributes}
               />
             </>
           );
@@ -179,6 +200,7 @@ function BreakpointStateTabs({
                   stateStyles={{ hover: customStyleHover, focusVisible: customStyleFocusVisible }}
                   transitionConfig={transitionConfig}
                   setTransitionConfig={setTransitionConfig}
+                  masterTransitionConfig={masterAttributes?.transitionConfig ?? null}
                 />
               )}
               <StyleControls
@@ -189,8 +211,10 @@ function BreakpointStateTabs({
                   else setAttributes(patch);
                 }}
                 clientId={clientId}
-                exclude={ANCHOR_STYLE_EXCLUDE}
+                exclude={[...ANCHOR_STYLE_EXCLUDE, 'Transition']}
                 controlProps={{ Display: { useUtilityClasses: false } }}
+                masterStyle={masterFocusStyle}
+                masterAttributes={masterAttributes}
               />
             </>
           );
@@ -207,6 +231,8 @@ function BreakpointStateTabs({
             }}
             clientId={clientId}
             exclude={ANCHOR_STYLE_EXCLUDE}
+            masterStyle={masterBaseStyle}
+            masterAttributes={masterAttributes}
             controlProps={{
               Display: { showCursor: true },
               ...(isDesktop ? {
@@ -311,6 +337,7 @@ function EditSelected({
   hasAnchorBlockInParents,
   innerTextPreviewValues = [],
   innerTextPreviewError = '',
+  masterAttributes,
 }) {
   const {
     uniqueId,
@@ -352,6 +379,8 @@ function EditSelected({
   // -- Modified indicators ----------------------------------------------------
 
   const baseKeys             = useMemo(() => Object.keys(customStyle || {}),             [customStyle]);
+  const hoverKeys            = useMemo(() => Object.keys(customStyleHover || {}),        [customStyleHover]);
+  const focusKeys            = useMemo(() => Object.keys(customStyleFocusVisible || {}), [customStyleFocusVisible]);
   const isBaseModified       = hasModifiedStyleProps(customStyle, baseKeys);
 
   const isResponsiveModified = Object.keys(responsiveStyle || {}).some((key) =>
@@ -372,7 +401,35 @@ function EditSelected({
     return hasGlobalOverrides || overridesCount > 0 || hasStateOverrides;
   }, [transitionConfig, transitionGlobal]);
 
-  const isStyleTabModified = isBaseModified || isResponsiveModified || hasTransitionPanelChanges;
+  const desktopLevel      = getModificationLevel(customStyle,             baseKeys,  masterAttributes ? (masterAttributes.customStyle             ?? {}) : null);
+  const hoverDesktopLevel  = getModificationLevel(customStyleHover,        hoverKeys, masterAttributes ? (masterAttributes.customStyleHover        ?? {}) : null);
+  const focusDesktopLevel  = getModificationLevel(customStyleFocusVisible, focusKeys, masterAttributes ? (masterAttributes.customStyleFocusVisible ?? {}) : null);
+
+  // Breakpoint-level dots: compare responsive styles against master's responsive styles.
+  const getBreakpointLevel = useMemo(() => (key) => {
+    const masterResp = masterAttributes?.responsiveStyle?.[key];
+    const instResp   = responsiveStyle?.[key];
+    let maxLevel = 0;
+    for (const state of ['base', 'hover', 'focusVisible']) {
+      const instStyle   = instResp?.[state] || {};
+      const masterStyle = masterAttributes
+        ? (masterResp?.[state] ?? {})
+        : null;
+      const level = getModificationLevel(instStyle, Object.keys(instStyle), masterStyle);
+      if (level > maxLevel) maxLevel = level;
+    }
+    return maxLevel;
+  }, [masterAttributes, responsiveStyle]);
+
+  const responsiveMaxLevel = useMemo(() => {
+    let max = 0;
+    for (const key of Object.keys(responsiveStyle || {})) {
+      max = Math.max(max, getBreakpointLevel(key));
+    }
+    return max;
+  }, [getBreakpointLevel, responsiveStyle]);
+
+  const stylesTabLevel = Math.max(desktopLevel, hoverDesktopLevel, focusDesktopLevel, responsiveMaxLevel, hasTransitionPanelChanges ? 1 : 0);
 
   // -- Canvas styles ----------------------------------------------------------
 
@@ -416,7 +473,7 @@ function EditSelected({
             className="tmsblocks-anchor-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
               { name: 'wrapper', title: 'Wrapper' },
-              { name: 'styles',  title: <ControlLabel label="Styles"  isSet={isStyleTabModified} /> },
+              { name: 'styles',  title: <ControlLabel label="Styles"  level={stylesTabLevel} /> },
             ]}
           >
             {(tab) => {
@@ -447,11 +504,13 @@ function EditSelected({
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
                     isDesktopModified={isBaseModified}
+                    desktopLevel={desktopLevel}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
                     }
+                    getBreakpointLevel={getBreakpointLevel}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />
@@ -472,6 +531,7 @@ function EditSelected({
                     clientId={clientId}
                     transitionConfig={transitionConfig}
                     setTransitionConfig={setTransitionConfig}
+                    masterAttributes={masterAttributes}
                   />
                 </>
               );
@@ -515,7 +575,7 @@ function EditSelected({
 // -- Entry point --------------------------------------------------------------
 
 export default function Edit(props) {
-  const { clientId, attributes, setAttributes, context } = props;
+  const { clientId, attributes, setAttributes, context, masterAttributes } = props;
   const {
     uniqueId,
     isInnerTextDynamic = false,

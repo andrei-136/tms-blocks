@@ -496,7 +496,7 @@ function FieldPresetSelector({ taxonomyOptions, onApply }) {
 
 // -- EditSelected -------------------------------------------------------------
 
-function EditSelected({ attributes, setAttributes, clientId, context }) {
+function EditSelected({ attributes, setAttributes, clientId, context, masterAttributes }) {
   const {
     steps                 = [],
     path                  = '',
@@ -866,6 +866,7 @@ function EditSelected({ attributes, setAttributes, clientId, context }) {
                                 include={ITEM_STYLE_INCLUDE[itemType] || ITEM_STYLE_INCLUDE.text}
                                 exclude={['Transition']}
                                 controlProps={{ Display: { useUtilityClasses: false } }}
+                                masterAttributes={masterAttributes}
                               />
                             </>
                           );
@@ -883,6 +884,7 @@ function EditSelected({ attributes, setAttributes, clientId, context }) {
                               }}
                               clientId={clientId}
                               include={ITEM_STYLE_INCLUDE[itemType] || ITEM_STYLE_INCLUDE.text}
+                              masterAttributes={masterAttributes}
                               controlProps={isDesktop ? {
                                 Display: { showCursor: true },
                                 Transition: {
@@ -928,6 +930,7 @@ function EditSelected({ attributes, setAttributes, clientId, context }) {
                         setAttributes={setAttributes}
                         clientId={clientId}
                         controlProps={{ Display: { showCursor: true } }}
+                        masterAttributes={masterAttributes}
                       />
                     </>
                   ) : (
@@ -939,6 +942,7 @@ function EditSelected({ attributes, setAttributes, clientId, context }) {
                         else setAttributes(patch);
                       }}
                       clientId={clientId}
+                      masterAttributes={masterAttributes}
                     />
                   )}
                 </>

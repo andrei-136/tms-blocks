@@ -3,7 +3,7 @@ import { PanelBody, TextControl, Button } from '@wordpress/components';
 import UnitControls, { KEYWORDS_SIZING, KEYWORDS_GLOBAL } from './UnitControls';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const DIMENSION_UNITS = ['px', 'rem', 'em', '%', 'vw', 'vh', 'auto', 'keywords', 'custom', 'size-presets'];
 const DIMENSION_UNITS_NO_AUTO = ['px', 'rem', 'em', '%', 'vw', 'vh', 'keywords', 'custom', 'size-presets'];
@@ -56,12 +56,18 @@ const PROP_LABELS = {
   aspectRatio: 'Aspect Ratio',
 };
 
-export default function DimensionControls({ customStyle, updateCustomStyle }) {
-  const isModified = hasModifiedStyleProps(customStyle, DIMENSION_PROPS);
-  const setProps = DIMENSION_PROPS.filter((key) => isStylePropSet(customStyle, key));
+export default function DimensionControls({ customStyle, updateCustomStyle, masterStyle = null }) {
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+  const dimLevel = getModificationLevel(customStyle, DIMENSION_PROPS, masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
+  const overriddenProps = DIMENSION_PROPS.filter(
+    (p) => getLevel(p) >= (masterStyle ? 3 : 1)
+  );
+  const hasOverrides = overriddenProps.length > 0;
 
   return (
-    <PanelBody title={<PanelTitle title="Size" isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Size" level={dimLevel} />} initialOpen={false}>
       {DIMENSION_PAIRS.map(({ keys, labels }) => (
         <div
           key={keys[0]}
@@ -74,7 +80,7 @@ export default function DimensionControls({ customStyle, updateCustomStyle }) {
           {keys.map((key, j) => (
             <UnitControls
               key={key}
-              label={<ControlLabel label={labels[j]} isSet={isStylePropSet(customStyle, key)} />}
+              label={<ControlLabel label={labels[j]} level={getLevel(key)} />}
               value={customStyle[key]}
               onChange={(val) => updateCustomStyle(key, val.value, val.unit)}
               allowedUnits={getAllowedUnitsForKey(key)}
@@ -85,7 +91,7 @@ export default function DimensionControls({ customStyle, updateCustomStyle }) {
       ))}
 
       <div style={{ marginBottom: '8px', marginTop: '8px' }}>
-        <ControlLabel label="Aspect Ratio" isSet={isStylePropSet(customStyle, 'aspectRatio')} />
+        <ControlLabel label="Aspect Ratio" level={getLevel('aspectRatio')} />
       </div>
       <TextControl
         label="Aspect Ratio"
@@ -95,10 +101,10 @@ export default function DimensionControls({ customStyle, updateCustomStyle }) {
         onChange={(val) => updateCustomStyle('aspectRatio', val || null)}
       />
 
-      {isModified && (
+      {hasOverrides && (
         <div style={{ marginTop: '12px', borderTop: '1px solid #e0e0e0', paddingTop: '8px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-            {setProps.map((key) => (
+            {overriddenProps.map((key) => (
               <span
                 key={key}
                 style={{
@@ -117,14 +123,14 @@ export default function DimensionControls({ customStyle, updateCustomStyle }) {
                     width: '5px',
                     height: '5px',
                     borderRadius: '999px',
-                    backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+                    backgroundColor: MODIFICATION_LEVEL_COLORS[getLevel(key)] || MODIFICATION_LEVEL_COLORS[1],
                     flexShrink: 0,
                     display: 'inline-block',
                   }}
                 />
                 {PROP_LABELS[key] ?? key}
                 <button
-                  onClick={() => updateCustomStyle(key, null)}
+                  onClick={() => updateCustomStyle(key, resetToMaster(key))}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -134,7 +140,7 @@ export default function DimensionControls({ customStyle, updateCustomStyle }) {
                     color: '#757575',
                     fontSize: '12px',
                   }}
-                  aria-label={`Unset ${PROP_LABELS[key] ?? key}`}
+                  aria-label={`${clearLabel} ${PROP_LABELS[key] ?? key}`}
                 >
                   ×
                 </button>
@@ -144,14 +150,13 @@ export default function DimensionControls({ customStyle, updateCustomStyle }) {
           <Button
             variant="secondary"
             isDestructive
-            onClick={() => updateCustomStyle({
-              width: null, height: null,
-              minWidth: null, minHeight: null,
-              maxWidth: null, maxHeight: null,
-              aspectRatio: null,
-            })}
+            onClick={() => {
+              const resetValues = {};
+              overriddenProps.forEach((p) => { resetValues[p] = resetToMaster(p); });
+              updateCustomStyle(resetValues);
+            }}
           >
-            Clear panel properties
+            {clearLabel} panel properties
           </Button>
         </div>
       )}

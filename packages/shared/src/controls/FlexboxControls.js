@@ -2,13 +2,13 @@ import React from 'react';
 import { PanelBody, SelectControl, Button } from '@wordpress/components';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel } from '../style-utils';
 
-function FlexboxFields({ customStyle, updateCustomStyle }) {
+function FlexboxFields({ customStyle, updateCustomStyle, getLevel }) {
   return (
     <>
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Flex Direction" isSet={isStylePropSet(customStyle, 'flexDirection')} />
+        <ControlLabel label="Flex Direction" level={getLevel('flexDirection')} />
       </div>
       <SelectControl
         label="Flex Direction"
@@ -25,7 +25,7 @@ function FlexboxFields({ customStyle, updateCustomStyle }) {
       />
 
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Justify Content" isSet={isStylePropSet(customStyle, 'justifyContent')} />
+        <ControlLabel label="Justify Content" level={getLevel('justifyContent')} />
       </div>
       <SelectControl
         label="Justify Content"
@@ -34,7 +34,9 @@ function FlexboxFields({ customStyle, updateCustomStyle }) {
         options={[
           { label: 'Default', value: '' },
           { label: 'Flex Start', value: 'flex-start' },
+          { label: 'Start', value: 'start' },
           { label: 'Center', value: 'center' },
+          { label: 'End', value: 'end' },
           { label: 'Flex End', value: 'flex-end' },
           { label: 'Space Between', value: 'space-between' },
           { label: 'Space Around', value: 'space-around' },
@@ -44,7 +46,7 @@ function FlexboxFields({ customStyle, updateCustomStyle }) {
       />
 
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Align Items" isSet={isStylePropSet(customStyle, 'alignItems')} />
+        <ControlLabel label="Align Items" level={getLevel('alignItems')} />
       </div>
       <SelectControl
         label="Align Items"
@@ -55,14 +57,16 @@ function FlexboxFields({ customStyle, updateCustomStyle }) {
           { label: 'Stretch', value: 'stretch' },
           { label: 'Center', value: 'center' },
           { label: 'Flex Start', value: 'flex-start' },
+          { label: 'Start', value: 'start' },
           { label: 'Flex End', value: 'flex-end' },
+          { label: 'End', value: 'end' },
           { label: 'Baseline', value: 'baseline' }
         ]}
         onChange={(val) => updateCustomStyle('alignItems', val)}
       />
 
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Flex Wrap" isSet={isStylePropSet(customStyle, 'flexWrap')} />
+        <ControlLabel label="Flex Wrap" level={getLevel('flexWrap')} />
       </div>
       <SelectControl
         label="Flex Wrap"
@@ -79,33 +83,33 @@ function FlexboxFields({ customStyle, updateCustomStyle }) {
   );
 }
 
-export default function FlexboxControls({ customStyle, updateCustomStyle, inline = false, forceShow = false }) {
+export default function FlexboxControls({ customStyle, updateCustomStyle, inline = false, forceShow = false, masterStyle = null }) {
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+  const flexProps = ['flexDirection', 'justifyContent', 'alignItems', 'flexWrap'];
+  const flexLevel = getModificationLevel(customStyle, flexProps, masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
   const isFlex = ['flex', 'inline-flex'].includes(customStyle.display);
-  const isModified = hasModifiedStyleProps(customStyle, [
-    'flexDirection',
-    'justifyContent',
-    'alignItems',
-    'flexWrap'
-  ]);
+  const isModified = flexLevel > 0;
 
   if (!isFlex && !forceShow) return null;
 
   if (inline) {
-    return <FlexboxFields customStyle={customStyle} updateCustomStyle={updateCustomStyle} />;
+    return <FlexboxFields customStyle={customStyle} updateCustomStyle={updateCustomStyle} getLevel={getLevel} />;
   }
 
   const handleClearPanel = () => {
     updateCustomStyle({
-      flexDirection: null,
-      justifyContent: null,
-      alignItems: null,
-      flexWrap: null,
+      flexDirection: resetToMaster('flexDirection'),
+      justifyContent: resetToMaster('justifyContent'),
+      alignItems: resetToMaster('alignItems'),
+      flexWrap: resetToMaster('flexWrap'),
     });
   };
 
   return (
-    <PanelBody title={<PanelTitle title="Flexbox" isModified={isModified} />} initialOpen={false}>
-      <FlexboxFields customStyle={customStyle} updateCustomStyle={updateCustomStyle} />
+    <PanelBody title={<PanelTitle title="Flexbox" level={flexLevel} />} initialOpen={false}>
+      <FlexboxFields customStyle={customStyle} updateCustomStyle={updateCustomStyle} getLevel={getLevel} />
       {isModified && (
         <Button
           variant="secondary"
@@ -113,7 +117,7 @@ export default function FlexboxControls({ customStyle, updateCustomStyle, inline
           onClick={handleClearPanel}
           style={{ marginTop: '8px' }}
         >
-          Clear panel properties
+          {clearLabel} panel properties
         </Button>
       )}
     </PanelBody>

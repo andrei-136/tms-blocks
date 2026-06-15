@@ -18,7 +18,7 @@ import GradientControls from './GradientControls';
 import BackgroundImageControls from './BackgroundImageControls';
 import PanelTitle from './PanelTitle';
 import ControlLabel from './ControlLabel';
-import { computeNextStyle, hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { computeNextStyle, getModificationLevel, isStylePropSet, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const PRESET_GRADIENT_VAR_REGEX = /^var\(--wp--preset--gradient--([^)]+)\)$/;
 
@@ -154,9 +154,15 @@ function withDraftedImage(customStyle, imageDraft) {
   };
 }
 
-export default function BackgroundControls({ customStyle = {}, updateCustomStyle }) {
-  const isModified = hasModifiedStyleProps(customStyle, ALL_PROPS);
-  const setProps = ALL_PROPS.filter((prop) => isStylePropSet(customStyle, prop));
+export default function BackgroundControls({ customStyle = {}, updateCustomStyle, masterStyle = null }) {
+  const panelLevel = getModificationLevel(customStyle, ALL_PROPS, masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  // Only show properties that are actually overridden (orange, level 3) on instances,
+  // or set/modified (blue, level 1) on standalone blocks.
+  const overriddenProps = ALL_PROPS.filter(
+    (prop) => getModificationLevel(customStyle, [prop], masterStyle) >= (masterStyle ? 3 : 1)
+  );
+  const hasOverrides = overriddenProps.length > 0;
   const inferredVisualMode = useMemo(
     () => detectBackgroundVisualMode(customStyle.backgroundImage),
     [customStyle.backgroundImage]
@@ -237,24 +243,27 @@ export default function BackgroundControls({ customStyle = {}, updateCustomStyle
     });
   };
 
+  const resetToMasterValue = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
+
   const handleClearPanelProperties = () => {
-    setBackgroundVisualMode('none');
-    setGradientDraft({});
-    setImageDraft({});
-    updateCustomStyle({
-      color: null,
-      backgroundColor: null,
-      backgroundImage: null,
-      backgroundSize: null,
-      backgroundPosition: null,
-      backgroundRepeat: null,
-      backgroundAttachment: null,
+    const resetValues = {};
+    overriddenProps.forEach((prop) => {
+      resetValues[prop] = resetToMasterValue(prop);
     });
+    // Also reset visual mode if backgroundImage is being reset
+    if (resetValues.hasOwnProperty('backgroundImage')) {
+      setBackgroundVisualMode('none');
+      setGradientDraft({});
+      setImageDraft({});
+    }
+    if (Object.keys(resetValues).length > 0) {
+      updateCustomStyle(resetValues);
+    }
   };
 
   return (
     <PanelBody
-      title={<PanelTitle title="Colors & Background" isModified={isModified} />}
+      title={<PanelTitle title="Colors & Background" level={panelLevel} />}
       initialOpen={false}
     >
       <div style={GROUP_STYLE('hsl(251, 50%, 94%)')}>
@@ -265,6 +274,7 @@ export default function BackgroundControls({ customStyle = {}, updateCustomStyle
           label="Color"
           usePanelBody={false}
           variant="button"
+          masterStyle={masterStyle}
         />
       </div>
 
@@ -276,6 +286,7 @@ export default function BackgroundControls({ customStyle = {}, updateCustomStyle
           label="Background Color"
           usePanelBody={false}
           variant="button"
+          masterStyle={masterStyle}
         />
       </div>
 
@@ -314,10 +325,10 @@ export default function BackgroundControls({ customStyle = {}, updateCustomStyle
         )}
       </div>
 
-      {isModified && (
+      {hasOverrides && (
         <div style={{ marginTop: '12px', borderTop: '1px solid #e0e0e0', paddingTop: '8px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-            {setProps.map((key) => (
+            {overriddenProps.map((key) => (
               <span
                 key={key}
                 style={{
@@ -336,14 +347,14 @@ export default function BackgroundControls({ customStyle = {}, updateCustomStyle
                     width: '5px',
                     height: '5px',
                     borderRadius: '999px',
-                    backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+                    backgroundColor: MODIFICATION_LEVEL_COLORS[getModificationLevel(customStyle, [key], masterStyle)] || MODIFICATION_LEVEL_COLORS[1],
                     flexShrink: 0,
                     display: 'inline-block',
                   }}
                 />
                 {PROP_LABELS[key] ?? key}
                 <button
-                  onClick={() => updateCustomStyle(key, null)}
+                  onClick={() => updateCustomStyle(key, resetToMasterValue(key))}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -353,7 +364,7 @@ export default function BackgroundControls({ customStyle = {}, updateCustomStyle
                     color: '#757575',
                     fontSize: '12px',
                   }}
-                  aria-label={`Unset ${PROP_LABELS[key] ?? key}`}
+                  aria-label={`${clearLabel} ${PROP_LABELS[key] ?? key}`}
                 >
                   ×
                 </button>
@@ -365,7 +376,7 @@ export default function BackgroundControls({ customStyle = {}, updateCustomStyle
             isDestructive
             onClick={handleClearPanelProperties}
           >
-            Clear panel properties
+            {clearLabel} panel properties
           </Button>
         </div>
       )}

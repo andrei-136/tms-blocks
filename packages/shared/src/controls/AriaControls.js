@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TextControl, SelectControl, PanelBody } from '@wordpress/components';
 import AttributeRepeater from './AttributeRepeater';
+import ControlLabel from './ControlLabel';
 
 const ROLE_OPTIONS = [
   { label: 'None', value: '' },
@@ -130,7 +131,7 @@ const ARIA_KEYWORD_VALUE_MAP = {
   ],
 };
 
-export default function AriaControls({ attributes, setAttributes, roleOptions = ROLE_OPTIONS, showRole = true }) {
+export default function AriaControls({ attributes, setAttributes, roleOptions = ROLE_OPTIONS, showRole = true, masterAttributes = null }) {
   const { ariaLabel = '', ariaRole = '', extraAriaAttributes = [] } = attributes;
   const [localAriaLabel, setLocalAriaLabel] = useState(ariaLabel);
 
@@ -138,12 +139,27 @@ export default function AriaControls({ attributes, setAttributes, roleOptions = 
     setLocalAriaLabel(ariaLabel);
   }, [ariaLabel]);
 
+  // Dot levels for instance override detection (empty-string defaults)
+  const masterAriaLabel = masterAttributes?.ariaLabel || '';
+  const labelLevel = masterAttributes ? ((!ariaLabel && !masterAriaLabel) ? 0 : (ariaLabel === masterAriaLabel ? 2 : 3)) : 0;
+
+  const masterAriaRole = masterAttributes?.ariaRole || '';
+  const roleLevel = masterAttributes ? ((!ariaRole && !masterAriaRole) ? 0 : (ariaRole === masterAriaRole ? 2 : 3)) : 0;
+
   const hasExtraAria = extraAriaAttributes.some((entry) => entry.key && entry.value);
+
+  const masterExtraAria = masterAttributes?.extraAriaAttributes || [];
+  const isExtraAriaDefault = !hasExtraAria && masterExtraAria.length === 0;
+  const extraAriaLevel = masterAttributes ? (isExtraAriaDefault ? 0 : (JSON.stringify(extraAriaAttributes) === JSON.stringify(masterExtraAria) ? 2 : 3)) : 0;
 
   return (
     <>
+      <div style={{ marginBottom: '8px' }}>
+        <ControlLabel label="ARIA Label" level={labelLevel} />
+      </div>
       <TextControl
         label="ARIA Label"
+        hideLabelFromVision
         value={localAriaLabel}
         onChange={(val) => setLocalAriaLabel(val)}
         onBlur={() => setAttributes({ ariaLabel: localAriaLabel.trim() })}
@@ -151,24 +167,30 @@ export default function AriaControls({ attributes, setAttributes, roleOptions = 
       />
 
       {showRole && (
+      <>
+      <div style={{ marginBottom: '8px' }}>
+        <ControlLabel label="Role" level={roleLevel} />
+      </div>
       <SelectControl
         label="Role"
+        hideLabelFromVision
         value={ariaRole}
         options={roleOptions}
         onChange={(val) => setAttributes({ ariaRole: val })}
         
       />
+      </>
       )}
       
-      
-        <AttributeRepeater
-          label="Extra ARIA Attributes"
-          value={extraAriaAttributes}
-          onChange={(val) => setAttributes({ extraAriaAttributes: val })}
-          allowedKeys={EXTRA_ARIA_KEYS}
-          keywordValueMap={ARIA_KEYWORD_VALUE_MAP}
-          showEmptyRow
-        />
+      <AttributeRepeater
+        label="Extra ARIA Attributes"
+        value={extraAriaAttributes}
+        onChange={(val) => setAttributes({ extraAriaAttributes: val })}
+        allowedKeys={EXTRA_ARIA_KEYS}
+        keywordValueMap={ARIA_KEYWORD_VALUE_MAP}
+        showEmptyRow
+        level={extraAriaLevel}
+      />
       
     </>
   );

@@ -3,7 +3,7 @@ Contributors: terriblemonster
 Tags: blocks, gutenberg, custom-blocks
 Requires at least: 6.3
 Tested up to: 7.0
-Stable tag: 1.0.2
+Stable tag: 1.0.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -48,6 +48,19 @@ These blocks are used to define content structure and render block output in a p
 
 == Changelog ==
 
+= 1.0.4 =
+* Added template variable support in Anchor block href ({{page_url}}, {{post_url}}, {{site_url}})
+* Fixed: title attribute set via Custom Attributes on Img block now renders on frontend
+* Added override indicator store (shared) for component-system dot colors
+* Added attrKey prop to PanelTitle and ControlLabel for override-aware dot coloring
+* Component instance overrides now show orange indicator dots in block controls
+* Bumped dependency: tms-component-system now populates override dot color store
+* Fixed priority bug in dynamic path resolver when placed inside query loop
+
+
+= 1.0.3 =
+* Fixed unexpected output error during activation
+
 = 1.0.2 =
 * Tested up to WordPress 7.0
 
@@ -58,3 +71,4 @@ These blocks are used to define content structure and render block output in a p
 
 The source code for this plugin, including unminified assets, is available at:
 https://github.com/andrei-136/tms-blocks
+

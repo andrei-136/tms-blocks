@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { PanelBody, TextControl, SelectControl } from '@wordpress/components';
 import PanelTitle from './PanelTitle';
 import ControlLabel from './ControlLabel';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const DEFAULT_TAG_NAME_OPTIONS = [
   { label: 'Div', value: 'div' },
@@ -15,21 +15,37 @@ const DEFAULT_TAG_NAME_OPTIONS = [
   { label: 'Article', value: 'article' },
 ];
 
+const WRAPPER_ATTRS = ['tagName', 'anchorId', 'ariaLabel', 'role', 'customAttributes'];
+
 export default function WrapperControls({
   attributes,
   setAttributes,
   showTagNameControl = true,
+  masterAttributes = null,
 }) {
   const { tagName, anchorId, ariaLabel, role, customAttributes } = attributes;
   const defaultTagName = DEFAULT_TAG_NAME_OPTIONS[0]?.value || 'div';
-  const isModified = hasModifiedStyleProps(attributes, ['tagName', 'anchorId', 'ariaLabel', 'role', 'customAttributes'], { tagName: defaultTagName });
+
+  // When on a component instance, compare each attribute against the master.
+  // Returns 0 (no dot for standalone), 2 (purple – matches), or 3 (orange – overridden).
+  const getAttrLevel = useCallback((key) => {
+    if (!masterAttributes) return 0;
+    const instanceVal = attributes[key];
+    const masterVal = key === 'tagName'
+      ? (masterAttributes[key] || defaultTagName)
+      : (masterAttributes[key] || '');
+    return instanceVal === masterVal ? 2 : 3;
+  }, [masterAttributes, attributes]);
+
+  // Max level across all wrapper attributes
+  const panelLevel = Math.max(...WRAPPER_ATTRS.map((k) => getAttrLevel(k)));
 
   return (
-    <PanelBody title={<PanelTitle title="Wrapper Settings" isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Wrapper Settings" level={panelLevel} />} initialOpen={false}>
       {showTagNameControl && (
         <>
           <div style={{ marginBottom: '8px' }}>
-            <ControlLabel label="HTML Tag" isSet={isStylePropSet(attributes, 'tagName', { tagName: defaultTagName })} />
+            <ControlLabel label="HTML Tag" level={getAttrLevel('tagName')} />
           </div>
         <SelectControl
           label="HTML Tag"
@@ -41,7 +57,7 @@ export default function WrapperControls({
         </>
       )}
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="ID" isSet={isStylePropSet(attributes, 'anchorId')} />
+        <ControlLabel label="ID" level={getAttrLevel('anchorId')} />
       </div>
       <TextControl
         label="ID"
@@ -50,7 +66,7 @@ export default function WrapperControls({
         onChange={(val) => setAttributes({ anchorId: val })}
       />
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="ARIA Label" isSet={isStylePropSet(attributes, 'ariaLabel')} />
+        <ControlLabel label="ARIA Label" level={getAttrLevel('ariaLabel')} />
       </div>
       <TextControl
         label="ARIA Label"
@@ -59,7 +75,7 @@ export default function WrapperControls({
         onChange={(val) => setAttributes({ ariaLabel: val })}
       />
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Role" isSet={isStylePropSet(attributes, 'role')} />
+        <ControlLabel label="Role" level={getAttrLevel('role')} />
       </div>
       <TextControl
         label="Role"
@@ -68,7 +84,7 @@ export default function WrapperControls({
         onChange={(val) => setAttributes({ role: val })}
       />
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Custom Attributes" isSet={isStylePropSet(attributes, 'customAttributes')} />
+        <ControlLabel label="Custom Attributes" level={getAttrLevel('customAttributes')} />
       </div>
       <TextControl
         label="Custom Attributes"

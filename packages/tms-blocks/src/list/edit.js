@@ -41,7 +41,7 @@ const LIST_ROLE_OPTIONS = [
 
 // -- Main Edit ----------------------------------------------------------------
 
-export default function Edit({ attributes, setAttributes, clientId }) {
+export default function Edit({ attributes, setAttributes, clientId, masterAttributes }) {
   const {
     uniqueId,
     tagName             = 'ul',
@@ -261,6 +261,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                           include={['List']}
                           exclude={['Transition']}
                           controlProps={stateTab.name !== 'base' ? { Display: { useUtilityClasses: false } } : {}}
+                          masterAttributes={masterAttributes}
                         />
                       );
                     }}

@@ -42,6 +42,45 @@ addFilter(
     }
 );
 
+addFilter(
+    'blocks.registerBlockType',
+    'tmscomps/component-system-attributes',
+    (settings, name) => {
+        // TMS Component System bridge: ensure every tmsblocks/* block has
+        // the shared component attributes even when block.json omits them.
+        if (typeof name !== 'string' || !name.startsWith('tmsblocks/')) {
+            return settings;
+        }
+
+        if (!settings || typeof settings !== 'object') {
+            return settings;
+        }
+
+        return {
+            ...settings,
+            attributes: {
+                ...(settings.attributes || {}),
+                componentMasterId: {
+                    type: 'number',
+                    default: 0,
+                },
+                componentVersion: {
+                    type: 'number',
+                    default: 0,
+                },
+                componentOverrides: {
+                    type: 'object',
+                    default: {},
+                },
+                componentResolved: {
+                    type: 'boolean',
+                    default: false,
+                },
+            },
+        };
+    }
+);
+
 import { subscribe } from '@wordpress/data';
 import { dispatch, select } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';

@@ -19,7 +19,7 @@ import {
   ToolbarGroup,
 } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
-import { customStyleToCSSString, hasModifiedStyleProps } from '../../../shared/src/style-utils';
+import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps } from '../../../shared/src/style-utils';
 import { useCustomStyle, useUniqueId, useDynamicField, useBreakpointStyles } from '../../../shared/src/hooks';
 import {
   StyleControls, IdentityControls,
@@ -132,6 +132,7 @@ function BreakpointStateTabs({
   attributes,
   setAttributes,
   clientId,
+  masterAttributes,
 }) {
   const isDesktop = activeBreakpoint === 'desktop';
 
@@ -151,6 +152,17 @@ function BreakpointStateTabs({
   const isBaseModified  = hasModifiedStyleProps(base.style,  Object.keys(base.style  || {}));
   const isHoverModified = hasModifiedStyleProps(hover.style, Object.keys(hover.style || {}));
   const isFocusModified = hasModifiedStyleProps(focus.style, Object.keys(focus.style || {}));
+
+  // Compute master styles for comparison (same breakpoint / state as the instance).
+  const masterBaseStyle  = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyle             ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.base         ?? {}))
+    : null;
+  const masterHoverStyle = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyleHover        ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.hover        ?? {}))
+    : null;
+  const masterFocusStyle = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyleFocusVisible ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.focusVisible ?? {}))
+    : null;
 
   const tabs = [
     { name: 'base',          title: <ControlLabel label="Base"          isSet={isBaseModified}  /> },
@@ -173,6 +185,8 @@ function BreakpointStateTabs({
               clientId={clientId}
               exclude={PARAGRAPH_STYLE_EXCLUDE}
               controlProps={{ Display: { useUtilityClasses: false } }}
+              masterStyle={masterHoverStyle}
+              masterAttributes={masterAttributes}
             />
           );
         }
@@ -189,6 +203,8 @@ function BreakpointStateTabs({
               clientId={clientId}
               exclude={PARAGRAPH_STYLE_EXCLUDE}
               controlProps={{ Display: { useUtilityClasses: false } }}
+              masterStyle={masterFocusStyle}
+              masterAttributes={masterAttributes}
             />
           );
         }
@@ -204,6 +220,8 @@ function BreakpointStateTabs({
             }}
             clientId={clientId}
             exclude={PARAGRAPH_STYLE_EXCLUDE}
+            masterStyle={masterBaseStyle}
+            masterAttributes={masterAttributes}
           />
         );
       }}
@@ -299,6 +317,7 @@ function EditSelected({
   postMetaOptions,
   termMetaOptionsByTax,
   userMetaOptions,
+  masterAttributes,
 }) {
   const {
     uniqueId,
@@ -376,7 +395,34 @@ function EditSelected({
     Object.keys(responsiveStyle[key]?.hover        || {}).length > 0 ||
     Object.keys(responsiveStyle[key]?.focusVisible || {}).length > 0
   );
-  const isStyleTabModified   = isBaseModified || isResponsiveModified;
+
+  const desktopLevel      = getModificationLevel(customStyle,             baseKeys,  masterAttributes ? (masterAttributes.customStyle             ?? {}) : null);
+
+  // Breakpoint-level dots
+  const getBreakpointLevel = useMemo(() => (key) => {
+    const masterResp = masterAttributes?.responsiveStyle?.[key];
+    const instResp   = responsiveStyle?.[key];
+    let maxLevel = 0;
+    for (const state of ['base', 'hover', 'focusVisible']) {
+      const instStyle   = instResp?.[state] || {};
+      const masterStyle = masterAttributes
+        ? (masterResp?.[state] ?? {})
+        : null;
+      const level = getModificationLevel(instStyle, Object.keys(instStyle), masterStyle);
+      if (level > maxLevel) maxLevel = level;
+    }
+    return maxLevel;
+  }, [masterAttributes, responsiveStyle]);
+
+  const responsiveMaxLevel = useMemo(() => {
+    let max = 0;
+    for (const key of Object.keys(responsiveStyle || {})) {
+      max = Math.max(max, getBreakpointLevel(key));
+    }
+    return max;
+  }, [getBreakpointLevel, responsiveStyle]);
+
+  const stylesTabLevel = Math.max(desktopLevel, responsiveMaxLevel);
 
 
   // -- Canvas styles ----------------------------------------------------------
@@ -434,7 +480,7 @@ function EditSelected({
             className="tmsblocks-paragraph-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
               { name: 'wrapper', title: 'Wrapper' },
-              { name: 'styles',  title: <ControlLabel label="Styles"  isSet={isStyleTabModified} /> },
+              { name: 'styles',  title: <ControlLabel label="Styles"  level={stylesTabLevel} /> },
             ]}
           >
             {(tab) => {
@@ -493,6 +539,7 @@ function EditSelected({
                           showPreview={!!(resolvedPath || dynamicPath)}
                           previewValue={previewHtml || previewError || ''}
                           previewHelp=""
+                          masterAttributes={masterAttributes}
                         />
                       )}
                     </div>
@@ -518,11 +565,13 @@ function EditSelected({
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
                     isDesktopModified={isBaseModified}
+                    desktopLevel={desktopLevel}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
                     }
+                    getBreakpointLevel={getBreakpointLevel}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />
@@ -541,6 +590,7 @@ function EditSelected({
                     attributes={attributes}
                     setAttributes={setAttributes}
                     clientId={clientId}
+                    masterAttributes={masterAttributes}
                   />
                 </>
               );
@@ -617,7 +667,7 @@ function EditSelected({
 // -- Entry point --------------------------------------------------------------
 
 export default function Edit(props) {
-  const { clientId, attributes, context, setAttributes } = props;
+  const { clientId, attributes, context, setAttributes, masterAttributes } = props;
   const {
     uniqueId,
     isDynamic               = false,

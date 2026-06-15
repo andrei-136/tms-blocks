@@ -61,8 +61,11 @@ export default function StyleControls({
   controlProps = {},
   clientId,
   showStyleValuesPreview = false,
+  masterAttributes = null,
+  masterStyle: masterStyleOverride = null,
 }) {
   const { customStyle = {}, tmsClassName = '', utilityClasses = '' } = attributes;
+  const masterStyle = masterStyleOverride ?? (masterAttributes?.customStyle || null);
   
   // Available control names for exclusion:
   // 'Background', 'BackgroundImage', 'Border', 'Color', 'Dimension', 'Display', 'Effects', 'Transition',
@@ -116,6 +119,7 @@ export default function StyleControls({
             updateCustomStyle={updateCustomStyle}
             utilityClasses={utilityClasses}
             setAttributes={setAttributes}
+            masterStyle={masterStyle}
             {...getControlProps('Display')}
           />
       )}
@@ -126,41 +130,42 @@ export default function StyleControls({
             clientId={clientId}
             allowFlexItem={shouldRender('FlexItem')}
             allowGridItem={shouldRender('GridItem')}
+            masterStyle={masterStyle}
             {...getControlProps('Item')}
           />
       )}
       {shouldRender('Gap') && (
-          <GapControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Gap')} />
+          <GapControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={allowedUnits} {...getControlProps('Gap')} />
       )}
       {shouldRender('Dimension') && (
-          <DimensionControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Dimension')} />
+          <DimensionControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={allowedUnits} {...getControlProps('Dimension')} />
       )}
       {shouldRender('Spacing') && (
-          <SpacingControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={['px', 'rem', 'em', '%', 'vw', 'vh', 'custom', 'size-presets']} {...getControlProps('Spacing')} />
+          <SpacingControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={['px', 'rem', 'em', '%', 'vw', 'vh', 'custom', 'size-presets']} {...getControlProps('Spacing')} />
       )}
       {shouldRender('Typography') && (
-          <TypographyControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Typography')} />
+          <TypographyControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={allowedUnits} {...getControlProps('Typography')} />
       )}
       {shouldRender('Color') && (
-          <ColorControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Color')} />
+          <ColorControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={allowedUnits} {...getControlProps('Color')} />
       )}
       {shouldRender('Background') && (
-          <BackgroundControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Background')} />
+          <BackgroundControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={allowedUnits} {...getControlProps('Background')} />
       )}
       {shouldRender('BackgroundImage') && (
           <BackgroundImageControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('BackgroundImage')} />
       )}
       {shouldRender('Border') && (
-          <BorderControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Border')} />
+          <BorderControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={allowedUnits} {...getControlProps('Border')} />
       )}
       {shouldRender('Effects') && (
-          <EffectsControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Effects')} />
+          <EffectsControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={allowedUnits} {...getControlProps('Effects')} />
       )}
       {shouldRender('Position') && (
-          <PositionControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Position')} />
+          <PositionControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterStyle={masterStyle} allowedUnits={allowedUnits} {...getControlProps('Position')} />
       )}
         {shouldRender('Transition') && (
-          <TransitionControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} {...getControlProps('Transition')} />
+          <TransitionControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} masterTransitionConfig={masterAttributes?.transitionConfig ?? null} {...getControlProps('Transition')} />
         )}
       {shouldRender('Object') && (
           <ObjectControls customStyle={customStyle} updateCustomStyle={updateCustomStyle} allowedUnits={allowedUnits} {...getControlProps('Object')} />
@@ -172,6 +177,7 @@ export default function StyleControls({
         <WrapperControls
           attributes={attributes}
           setAttributes={setAttributes}
+          masterAttributes={masterAttributes}
                     {...getControlProps('Wrapper')}
         />
       )}

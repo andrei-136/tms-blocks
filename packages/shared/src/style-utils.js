@@ -154,6 +154,55 @@ export const isStylePropSet = (customStyle = {}, prop, defaults = {}) => {
   return !isStyleValueEmpty(currentValue);
 };
 
+/**
+ * Returns the modification level for one or more style properties.
+ *
+ * 0 – not modified (empty)
+ * 1 – modified on standalone block (value set, no component master for comparison)
+ * 2 – set by master (value matches the master — purple dot)
+ * 3 – overridden (value differs from the master — orange dot)
+ *
+ * @param {Object}  customStyle - The instance's current style values.
+ * @param {string[]} props       - Property keys to check.
+ * @param {Object}  [masterStyle] - The master's style values (null/undefined when not a component instance).
+ * @returns {number}
+ */
+
+export const MASTER_PURPLE = '#8a42dd';
+
+export const MODIFICATION_LEVEL_COLORS = {
+  1: 'var(--wp-admin-theme-color, #007cba)', // blue – standalone modification
+  2: MASTER_PURPLE, // purple – set by master
+  3: '#f5a623', // orange – override from master
+};
+
+export const getModificationLevel = (customStyle = {}, props = [], masterStyle = null) => {
+  let level = 0;
+
+  for (const prop of props) {
+    const instanceValue = customStyle?.[prop];
+    const hasMasterValue = masterStyle && Object.prototype.hasOwnProperty.call(masterStyle, prop);
+
+    if (hasMasterValue && !isStyleValueEmpty(masterStyle[prop])) {
+      if (!areStyleValuesEqual(instanceValue, masterStyle[prop])) {
+        level = Math.max(level, 3); // orange – instance override from master
+      } else {
+        level = Math.max(level, 2); // purple – matches master (set by master)
+      }
+    } else {
+      // No master value for this property (or master value is empty) –
+      // check if instance has set something
+      if (!isStyleValueEmpty(instanceValue)) {
+        // On an instance, the master uses the CSS default (no value).
+        // Any value set here is an override from that default.
+        level = Math.max(level, masterStyle ? 3 : 1);
+      }
+    }
+  }
+
+  return level;
+};
+
 // src/shared/style-helpers.js
 
 export function getNestedValue(obj, pathParts) {

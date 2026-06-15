@@ -9,6 +9,8 @@ export default function BreakpointSelector({
   setBreakpoint,
   isDesktopModified = false,
   getBreakpointIsSet = () => false,
+  desktopLevel = 0,
+  getBreakpointLevel = () => 0,
   breakpointOverrides = {},
   setAttributes,
 }) {
@@ -128,7 +130,7 @@ export default function BreakpointSelector({
             onClick={() => setBreakpoint('desktop')}
             style={getMainButtonStyle(activeBreakpoint === 'desktop')}
           >
-            <ControlLabel label="Desktop" isSet={isDesktopModified} />
+            <ControlLabel label="Desktop" isSet={isDesktopModified} level={desktopLevel} />
           </Button>
         </div>
 
@@ -143,7 +145,7 @@ export default function BreakpointSelector({
               onClick={() => setBreakpoint(key)}
               style={getMainButtonStyle(isActive)}
             >
-              <ControlLabel label={label} isSet={getBreakpointIsSet(key)} />
+              <ControlLabel label={label} isSet={getBreakpointIsSet(key)} level={getBreakpointLevel(key)} />
             </Button>
             <Button
               variant="tertiary"

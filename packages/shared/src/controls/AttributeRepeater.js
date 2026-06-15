@@ -111,7 +111,7 @@ const styles = {
   },
 };
 
-export default function AttributeRepeater({ label, value = [], onChange, allowedKeys = [], showEmptyRow = false, keywordValueMap = {} }) {
+export default function AttributeRepeater({ label, value = [], onChange, allowedKeys = [], showEmptyRow = false, keywordValueMap = {}, level = 0 }) {
   const displayValue = showEmptyRow && value.length === 0 ? [EMPTY_ENTRY] : value;
   const hasEntries = displayValue.length > 0;
   const hasDataOption = allowedKeys.some((k) => k === DATA_WILDCARD || k.startsWith(DATA_PREFIX));
@@ -162,7 +162,7 @@ export default function AttributeRepeater({ label, value = [], onChange, allowed
   return (
     <div style={styles.wrapper} className="tmsblocks-attribute-repeater">
       <div style={{ marginBottom: hasEntries ? '4px' : '0' }}>
-        <ControlLabel label={label} />
+        <ControlLabel label={label} level={level} />
       </div>
 
       {hasEntries && (

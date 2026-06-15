@@ -9,7 +9,7 @@ import { PanelBody, ToggleControl, Button } from '@wordpress/components';
 import UnitControls, { KEYWORDS_GLOBAL, KEYWORDS_TEXT } from './UnitControls';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const GAP_KEYWORDS = [
   ...KEYWORDS_TEXT.filter(k => k.value === 'normal'),
@@ -20,7 +20,8 @@ const GAP_UNITS = ['px', 'rem', 'em', '%', 'vw', 'vh', 'custom', 'size-presets',
 
 export default function GapControls({
   customStyle = {},
-  updateCustomStyle
+  updateCustomStyle,
+  masterStyle = null
 }) {
   const gap = customStyle.gap;
   const rowGap = customStyle.rowGap;
@@ -55,10 +56,13 @@ export default function GapControls({
     }
   };
 
-  const isModified = hasModifiedStyleProps(customStyle, ['gap', 'rowGap', 'columnGap']);
+  const gapLevel = getModificationLevel(customStyle, ['gap', 'rowGap', 'columnGap'], masterStyle);
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
   
   return (
-    <PanelBody title={<PanelTitle title="Gap" isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Gap" level={gapLevel} />} initialOpen={false}>
       <ToggleControl
         label="Different row/column gaps"
         checked={useRowColumn}
@@ -67,7 +71,7 @@ export default function GapControls({
       
       {!useRowColumn ? (
         <UnitControls
-          label={<ControlLabel label="Gap" isSet={isStylePropSet(customStyle, 'gap')} />}
+          label={<ControlLabel label="Gap" level={getLevel('gap')} />}
           value={gap}
           onChange={handleGapChange}
           allowedUnits={GAP_UNITS}
@@ -76,14 +80,14 @@ export default function GapControls({
       ) : (
         <>
           <UnitControls
-            label={<ControlLabel label="Column Gap (horizontal)" isSet={isStylePropSet(customStyle, 'columnGap')} />}
+            label={<ControlLabel label="Column Gap (horizontal)" level={getLevel('columnGap')} />}
             value={columnGap}
             onChange={handleColumnGapChange}
             allowedUnits={GAP_UNITS}
             keywords={GAP_KEYWORDS}
           />
           <UnitControls
-            label={<ControlLabel label="Row Gap (vertical)" isSet={isStylePropSet(customStyle, 'rowGap')} />}
+            label={<ControlLabel label="Row Gap (vertical)" level={getLevel('rowGap')} />}
             value={rowGap}
             onChange={handleRowGapChange}
             allowedUnits={GAP_UNITS}
@@ -92,14 +96,18 @@ export default function GapControls({
         </>
       )}
 
-      {isModified && (
+      {gapLevel > 0 && (
         <Button
           variant="secondary"
           isDestructive
-          onClick={() => updateCustomStyle({ gap: null, rowGap: null, columnGap: null })}
+          onClick={() => updateCustomStyle({
+            gap: resetToMaster('gap'),
+            rowGap: resetToMaster('rowGap'),
+            columnGap: resetToMaster('columnGap'),
+          })}
           style={{ marginTop: '8px' }}
         >
-          Clear panel properties
+          {clearLabel} panel properties
         </Button>
       )}
     </PanelBody>

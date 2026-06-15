@@ -19,7 +19,8 @@ export default function TagControls({
   setTagName,
   tagNameOptions = DEFAULT_TAG_NAME_OPTIONS,
   attributes,
-  setAttributes
+  setAttributes,
+  masterAttributes = null,
 }) {
   const resolvedTagName = tagName ?? attributes?.tagName;
   const resolvedSetTagName = setTagName
@@ -29,11 +30,15 @@ export default function TagControls({
       }
     });
   const defaultTagName = tagNameOptions[0]?.value || 'div';
+  const currentTag = resolvedTagName || defaultTagName;
+  const masterTag = masterAttributes?.tagName || defaultTagName;
+  const isTagDefault = currentTag === defaultTagName && masterTag === defaultTagName;
+  const tagLevel = masterAttributes ? (isTagDefault ? 0 : (currentTag === masterTag ? 2 : 3)) : 0;
 
   return (
     <>
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Element Tag" />
+        <ControlLabel label="Element Tag" level={tagLevel} />
       </div>
       <SelectControl
         label="Element Tag"

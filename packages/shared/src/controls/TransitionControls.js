@@ -45,7 +45,7 @@ import {
 } from '@wordpress/components';
 import PanelTitle from './PanelTitle';
 import ControlLabel from './ControlLabel';
-import { isStylePropSet } from '../style-utils';
+import { getModificationLevel, isStylePropSet } from '../style-utils';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -275,10 +275,19 @@ function TimingFields({ values, onChange, isGlobal = false }) {
 // PropertyRow
 // ---------------------------------------------------------------------------
 
-function PropertyRow({ property, globalTiming, override, onOverrideChange, onOverrideClear, isLinked, onRemove }) {
+function PropertyRow({ property, globalTiming, override, onOverrideChange, onOverrideClear, isLinked, onRemove, masterOverride }) {
   const [expanded, setExpanded] = useState(false);
   const hasOverride    = !!override;
   const displayValues  = hasOverride ? { ...globalTiming, ...override } : globalTiming;
+
+  // Dot level for the override indicator
+  const overrideLevel = (() => {
+    if (!hasOverride) return 0;
+    if (masterOverride === undefined) return 1; // blue – no master for comparison
+    try {
+      return JSON.stringify(override) === JSON.stringify(masterOverride) ? 2 : 3;
+    } catch { return 1; }
+  })();
 
   const summary = (() => {
     const easing = displayValues.easing === '__custom__'
@@ -294,10 +303,10 @@ function PropertyRow({ property, globalTiming, override, onOverrideChange, onOve
           <code style={{ fontSize: '11px', fontWeight: 700, color: '#1e1e1e' }}>
             {property}
           </code>
-          {hasOverride && (
+          {hasOverride && overrideLevel > 0 && (
             <span style={{
               width: '5px', height: '5px', borderRadius: '999px',
-              backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+              backgroundColor: overrideLevel >= 3 ? '#f5a623' : overrideLevel >= 2 ? '#a855f7' : 'var(--wp-admin-theme-color, #007cba)',
               display: 'inline-block', flexShrink: 0,
             }} />
           )}
@@ -410,6 +419,7 @@ export default function TransitionControls({
   stateStyles       = {},
   transitionConfig  = {},
   setTransitionConfig = () => {},
+  masterTransitionConfig = null,
 }) {
   const config = useMemo(() => ({
     linked:             transitionConfig.linked             ?? DEFAULT_CONFIG.linked,
@@ -424,6 +434,19 @@ export default function TransitionControls({
   );
 
   const isModified = activeProperties.length > 0;
+
+  // Compare transitionConfig against master for dot colours
+  const transitionLevel = useMemo(() => {
+    if (activeProperties.length === 0) return 0;
+    if (!masterTransitionConfig) return 1; // blue – standalone
+    try {
+      const ours = JSON.stringify(transitionConfig);
+      const theirs = JSON.stringify(masterTransitionConfig);
+      return ours === theirs ? 2 : 3; // purple / orange
+    } catch { return 1; }
+  }, [activeProperties.length, masterTransitionConfig, transitionConfig]);
+
+  const clearLabel = masterTransitionConfig ? 'Reset' : 'Clear';
 
   // Keep transition string in sync
   useEffect(() => {
@@ -502,16 +525,20 @@ export default function TransitionControls({
   };
 
   const handleClear = () => {
-    const next = { ...DEFAULT_CONFIG };
-    setTransitionConfig(next);
-    updateCustomStyle('transition', null);
+    if (masterTransitionConfig) {
+      setTransitionConfig(masterTransitionConfig);
+    } else {
+      const next = { ...DEFAULT_CONFIG };
+      setTransitionConfig(next);
+      updateCustomStyle('transition', null);
+    }
   };
 
   // Render
 
   return (
     <PanelBody
-      title={<PanelTitle title="Transition" isModified={isModified} />}
+      title={<PanelTitle title="Transition" level={transitionLevel} />}
       initialOpen={false}
     >
       {/* Auto-sync toggle */}
@@ -548,7 +575,7 @@ export default function TransitionControls({
       {activeProperties.length > 0 ? (
         <>
           <span style={{ ...labelStyle, marginBottom: '6px', color: 'var(--tmsblocks-text-muted, #4a5a5a)' }}>
-            <ControlLabel label="Properties" isSet={activeProperties.length > 0} />
+            <ControlLabel label="Properties" level={transitionLevel} />
           </span>
           {activeProperties.map((prop) => (
             <PropertyRow
@@ -560,6 +587,7 @@ export default function TransitionControls({
               onOverrideClear={handleOverrideClear}
               isLinked={config.linked}
               onRemove={() => handleRemoveProperty(prop)}
+              masterOverride={masterTransitionConfig?.overrides?.[prop]}
             />
           ))}
         </>
@@ -580,7 +608,7 @@ export default function TransitionControls({
       )}
 
       {/* Clear all */}
-      {isModified && (
+      {transitionLevel > 0 && (
         <Button
           variant="tertiary"
           isSmall
@@ -588,7 +616,7 @@ export default function TransitionControls({
           onClick={handleClear}
           style={{ marginTop: '12px' }}
         >
-          Clear all transition overrides
+          {`${clearLabel} all transition overrides`}
         </Button>
       )}
 

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { TextareaControl } from '@wordpress/components';
+import ControlLabel from './ControlLabel';
 
 function collapseClassNames(value) {
   return value
@@ -8,7 +9,7 @@ function collapseClassNames(value) {
     .trim();
 }
 
-export default function ClassNameControl({ value = '', onChange, help = '' }) {
+export default function ClassNameControl({ value = '', onChange, help = '', level = 0 }) {
   const textareaRef = useRef(null);
   const [localValue, setLocalValue] = useState(value);
 
@@ -28,8 +29,12 @@ export default function ClassNameControl({ value = '', onChange, help = '' }) {
 
   return (
     <div ref={textareaRef}>
+      <div style={{ marginBottom: '8px' }}>
+        <ControlLabel label="Classes" level={level} />
+      </div>
       <TextareaControl
         label="Classes"
+        hideLabelFromVision
         value={localValue}
         onChange={(val) => setLocalValue(val)}
         onBlur={() => onChange(collapseClassNames(localValue))}

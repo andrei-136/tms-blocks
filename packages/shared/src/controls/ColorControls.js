@@ -21,7 +21,7 @@ import {
 import { useSettings } from '@wordpress/block-editor';
 import PanelTitle from './PanelTitle';
 import ControlLabel from './ControlLabel';
-import { hasModifiedStyleProps } from '../style-utils';
+import { getModificationLevel, hasModifiedStyleProps, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 // --- Checkerboard -------------------------------------------------------------
 
@@ -56,7 +56,7 @@ function mapPaletteColorToStoredValue(value, colors = []) {
 
 // --- Two-step color picker UI ------------------------------------------------
 
-function ColorPickerUI({ currentValue, pickerValue, paletteValue, colors, onCustomChange, onPaletteChange, onClear }) {
+function ColorPickerUI({ currentValue, pickerValue, paletteValue, colors, onCustomChange, onPaletteChange, onClear, clearLabel = 'Clear' }) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [valueBeforePicker, setValueBeforePicker] = useState(null);
   const swatchRef = useRef(null);
@@ -184,10 +184,10 @@ function ColorPickerUI({ currentValue, pickerValue, paletteValue, colors, onCust
       )}
 
       {/* Footer - clear only */}
-      {currentValue && (
+      {clearLabel !== 'Reset' && currentValue && (
         <Flex justify="flex-end" style={{ marginTop: '2px' }}>
           <Button isSmall isDestructive variant="tertiary" onClick={onClear}>
-            Clear
+            {clearLabel}
           </Button>
         </Flex>
       )}
@@ -206,8 +206,10 @@ export default function ColorControls({
   variant = 'full',
   clearAsIcon = false,
   showToggleMarker = true,
+  masterStyle = null,
 }) {
-  const isModified = hasModifiedStyleProps(customStyle, [property]);
+  const modLevel = getModificationLevel(customStyle, [property], masterStyle);
+  const isModified = modLevel > 0;
   const currentValue = customStyle[property] || '';
   const hasLabel = label !== null && label !== undefined && label !== '';
 
@@ -217,7 +219,9 @@ export default function ColorControls({
 
   const handleCustomChange = (val) => updateCustomStyle(property, val || null);
   const handlePaletteChange = (val) => updateCustomStyle(property, mapPaletteColorToStoredValue(val, colors));
-  const handleClear = () => updateCustomStyle(property, null);
+  const handleClear = () => updateCustomStyle(property, masterStyle ? (masterStyle[property] ?? null) : null);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const showClearButton = currentValue && modLevel !== 2;
 
   // --- Button variant --------------------------------------------------------
 
@@ -228,7 +232,7 @@ export default function ColorControls({
           <Flex align="center" gap={2}>
             {hasLabel && (
               <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#1e1e1e' }}>
-                {showToggleMarker ? <ControlLabel label={label} isSet={isModified} /> : label}
+                {showToggleMarker ? <ControlLabel label={label} level={modLevel} /> : label}
               </span>
             )}
             {!hasLabel && showToggleMarker && isModified && (
@@ -238,7 +242,7 @@ export default function ColorControls({
                   width: '5px',
                   height: '5px',
                   borderRadius: '999px',
-                  backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+                  backgroundColor: MODIFICATION_LEVEL_COLORS[modLevel] || MODIFICATION_LEVEL_COLORS[1],
                   display: 'inline-block',
                   flexShrink: 0,
                 }}
@@ -271,7 +275,7 @@ export default function ColorControls({
                 }} />
               </span>
             </Button>
-            {currentValue && (
+            {showClearButton && (
               <Button
                 isSmall
                 variant="tertiary"
@@ -280,10 +284,10 @@ export default function ColorControls({
                   border: '1px solid currentColor',
                   ...(clearAsIcon ? { padding: '2px 6px', lineHeight: 1 } : {}),
                 }}
-                aria-label={`Clear ${label || 'color'}`}
-                title={`Clear ${label || 'color'}`}
+                aria-label={`${clearLabel} ${label || 'color'}`}
+                title={`${clearLabel} ${label || 'color'}`}
               >
-                {clearAsIcon ? '×' : 'Clear'}
+                {clearAsIcon ? '×' : clearLabel}
               </Button>
             )}
           </Flex>
@@ -302,6 +306,7 @@ export default function ColorControls({
               onCustomChange={handleCustomChange}
               onPaletteChange={handlePaletteChange}
               onClear={() => { handleClear(); onClose(); }}
+              clearLabel={clearLabel}
             />
           </div>
         )}
@@ -323,6 +328,7 @@ export default function ColorControls({
         onCustomChange={handleCustomChange}
         onPaletteChange={handlePaletteChange}
         onClear={handleClear}
+        clearLabel={clearLabel}
       />
     </div>
   );
@@ -330,11 +336,11 @@ export default function ColorControls({
   if (!usePanelBody) return controls;
 
   return (
-    <PanelBody title={<PanelTitle title={label} isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title={label} level={modLevel} />} initialOpen={false}>
       {controls}
-      {isModified && (
+      {showClearButton && (
         <Button variant="secondary" isDestructive onClick={handleClear} style={{ marginTop: '8px' }}>
-          Clear panel properties
+          {clearLabel} panel properties
         </Button>
       )}
     </PanelBody>

@@ -4,7 +4,7 @@ import { useSelect } from '@wordpress/data';
 import { store as blockEditorStore } from '@wordpress/block-editor';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel } from '../style-utils';
 
 const getUnitlessValue = (value) => {
   if (!value) return '';
@@ -19,7 +19,8 @@ export default function GridItemControls({
   customStyle = {},
   updateCustomStyle,
   forceShow = false,
-  inline = false
+  inline = false,
+  masterStyle = null
 }) {
   const isParentGrid = useSelect((select) => {
     if (!clientId) return false;
@@ -40,14 +41,10 @@ export default function GridItemControls({
       || classList.includes('tmsblocks-display-grid');
   }, [clientId]);
 
-  const hasGridItemOverrides = hasModifiedStyleProps(customStyle, [
-    'justifySelf',
-    'alignSelf',
-    'order',
-    'gridColumn',
-    'gridRow',
-    'gridArea'
-  ]);
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+  const gridProps = ['justifySelf','alignSelf','order','gridColumn','gridRow','gridArea'];
+
+  const hasGridItemOverrides = gridProps.some((p) => getLevel(p) >= (masterStyle ? 3 : 1));
 
   const [stayVisibleWhileSelected, setStayVisibleWhileSelected] = useState(false);
 
@@ -85,7 +82,7 @@ export default function GridItemControls({
       
       {/* Justify Self */}
       <SelectControl
-        label={<ControlLabel label="Justify Self" isSet={isStylePropSet(customStyle, 'justifySelf')} />}
+        label={<ControlLabel label="Justify Self" level={getLevel('justifySelf')} />}
         value={customStyle.justifySelf || ''}
         options={[
           { label: 'Default', value: '' },
@@ -101,7 +98,7 @@ export default function GridItemControls({
       
       {/* Align Self */}
       <SelectControl
-        label={<ControlLabel label="Align Self" isSet={isStylePropSet(customStyle, 'alignSelf')} />}
+        label={<ControlLabel label="Align Self" level={getLevel('alignSelf')} />}
         value={customStyle.alignSelf || ''}
         options={[
           { label: 'Default', value: '' },
@@ -117,7 +114,7 @@ export default function GridItemControls({
       
       {/* Order */}
       <TextControl
-        label={<ControlLabel label="Order" isSet={isStylePropSet(customStyle, 'order')} />}
+        label={<ControlLabel label="Order" level={getLevel('order')} />}
         value={orderValue}
         onChange={handleUnitlessChange('order')}
         
@@ -127,7 +124,7 @@ export default function GridItemControls({
        
       {/* Grid Column */}
       <TextControl
-        label={<ControlLabel label="Grid Column" isSet={isStylePropSet(customStyle, 'gridColumn')} />}
+        label={<ControlLabel label="Grid Column" level={getLevel('gridColumn')} />}
         value={customStyle.gridColumn || ''}
         onChange={(val) => updateCustomStyle('gridColumn', val || null)}
         placeholder="e.g., 1 / 3, span 2, 2 / -1"
@@ -136,7 +133,7 @@ export default function GridItemControls({
       
       {/* Grid Row */}
       <TextControl
-        label={<ControlLabel label="Grid Row" isSet={isStylePropSet(customStyle, 'gridRow')} />}
+        label={<ControlLabel label="Grid Row" level={getLevel('gridRow')} />}
         value={customStyle.gridRow || ''}
         onChange={(val) => updateCustomStyle('gridRow', val || null)}
         placeholder="e.g., 1 / 3, span 2, 2 / -1"
@@ -145,7 +142,7 @@ export default function GridItemControls({
       
       {/* Grid Area */}
       <TextControl
-        label={<ControlLabel label="Grid Area" isSet={isStylePropSet(customStyle, 'gridArea')} />}
+        label={<ControlLabel label="Grid Area" level={getLevel('gridArea')} />}
         value={customStyle.gridArea || ''}
         onChange={(val) => updateCustomStyle('gridArea', val || null)}
         placeholder="e.g., header"
@@ -160,24 +157,27 @@ export default function GridItemControls({
 
   if (!shouldShowPanel) return null;
 
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
+
   return (
-    <PanelBody title={<PanelTitle title="Grid Item" isModified={hasGridItemOverrides} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Grid Item" level={getModificationLevel(customStyle, gridProps, masterStyle)} />} initialOpen={false}>
       {fields}
       {hasGridItemOverrides && (
         <Button
           variant="secondary"
           isDestructive
           onClick={() => updateCustomStyle({
-            justifySelf: null,
-            alignSelf: null,
-            order: null,
-            gridColumn: null,
-            gridRow: null,
-            gridArea: null,
+            justifySelf: resetToMaster('justifySelf'),
+            alignSelf: resetToMaster('alignSelf'),
+            order: resetToMaster('order'),
+            gridColumn: resetToMaster('gridColumn'),
+            gridRow: resetToMaster('gridRow'),
+            gridArea: resetToMaster('gridArea'),
           })}
           style={{ marginTop: '8px' }}
         >
-          Clear panel properties
+          {clearLabel} panel properties
         </Button>
       )}
     </PanelBody>

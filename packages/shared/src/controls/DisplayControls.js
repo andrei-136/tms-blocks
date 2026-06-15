@@ -3,7 +3,7 @@ import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
 import FlexboxControls from './FlexboxControls';
 import GridControls from './GridControls';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const FLEX_PROPS = ['flexDirection', 'flexWrap'];
 const GRID_PROPS = ['gridTemplateColumns', 'gridTemplateRows', 'gridTemplateAreas', 'gridAutoFlow', 'justifyItems', 'alignContent'];
@@ -49,47 +49,43 @@ const displayOptions = [
 export default function DisplayControls({
   customStyle = {},
   updateCustomStyle,
-  showCursor = false
+  showCursor = false,
+  masterStyle = null
 }) {
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
   const currentDisplay = typeof customStyle.display === 'string' ? customStyle.display : '';
 
   const isFlexDisplay = ['flex', 'inline-flex'].includes(currentDisplay);
   const isGridDisplay = ['grid', 'inline-grid'].includes(currentDisplay);
 
-  const hasFlexOverrides = hasModifiedStyleProps(customStyle, FLEX_PROPS);
-  const hasGridOverrides = hasModifiedStyleProps(customStyle, GRID_PROPS);
+  const hasFlexOverrides = getLevel('flexDirection') >= 3 || getLevel('flexWrap') >= 3;
+  const hasGridOverrides = ['gridTemplateColumns', 'gridTemplateRows', 'gridTemplateAreas', 'gridAutoFlow', 'justifyItems', 'alignContent']
+    .some((p) => getLevel(p) >= (masterStyle ? 3 : 1));
 
   const shouldShowFlexPanel = isFlexDisplay;
   const shouldShowGridPanel = isGridDisplay;
 
-  const isDisplayModified = !!currentDisplay || isStylePropSet(customStyle, 'display');
-  const isCursorModified = isStylePropSet(customStyle, 'cursor');
-  const isModified =
-    isDisplayModified ||
-    isStylePropSet(customStyle, 'overflow') ||
-    (showCursor && isCursorModified) ||
-    hasFlexOverrides ||
-    hasGridOverrides ||
-    hasModifiedStyleProps(customStyle, SHARED_PROPS);
-
-  const setProps = DISPLAY_PANEL_STYLE_KEYS.filter((key) => isStylePropSet(customStyle, key));
+  const overriddenProps = DISPLAY_PANEL_STYLE_KEYS.filter(
+    (p) => getLevel(p) >= (masterStyle ? 3 : 1)
+  );
+  const hasOverrides = overriddenProps.length > 0;
 
   const handleDisplayChange = (value) => {
     updateCustomStyle({ display: value || null });
   };
 
   const handleClearPanel = () => {
-    const clearMap = DISPLAY_PANEL_STYLE_KEYS.reduce((acc, key) => {
-      acc[key] = null;
-      return acc;
-    }, {});
-    updateCustomStyle(clearMap);
+    const resetValues = {};
+    overriddenProps.forEach((p) => { resetValues[p] = resetToMaster(p); });
+    updateCustomStyle(resetValues);
   };
 
   return (
-    <PanelBody title={<PanelTitle title="Display & Layout" isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Display & Layout" level={getModificationLevel(customStyle, DISPLAY_PANEL_STYLE_KEYS, masterStyle)} />} initialOpen={false}>
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Display" isSet={isDisplayModified} />
+        <ControlLabel label="Display" level={getLevel('display')} />
       </div>
       <SelectControl
         label="Display"
@@ -105,6 +101,7 @@ export default function DisplayControls({
           updateCustomStyle={updateCustomStyle}
           forceShow={hasFlexOverrides}
           inline
+          masterStyle={masterStyle}
         />
       )}
 
@@ -114,11 +111,12 @@ export default function DisplayControls({
           updateCustomStyle={updateCustomStyle}
           forceShow={hasGridOverrides}
           inline
+          masterStyle={masterStyle}
         />
       )}
 
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Overflow" isSet={isStylePropSet(customStyle, 'overflow')} />
+        <ControlLabel label="Overflow" level={getLevel('overflow')} />
       </div>
       <SelectControl
         label="Overflow"
@@ -137,7 +135,7 @@ export default function DisplayControls({
       {showCursor && (
         <>
           <div style={{ marginBottom: '8px' }}>
-            <ControlLabel label="Cursor" isSet={isCursorModified} />
+            <ControlLabel label="Cursor" level={getLevel('cursor')} />
           </div>
           <SelectControl
             label="Cursor"
@@ -158,10 +156,10 @@ export default function DisplayControls({
         </>
       )}
 
-      {isModified && (
+      {hasOverrides && (
         <div style={{ marginTop: '12px', borderTop: '1px solid #e0e0e0', paddingTop: '8px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-            {setProps.map((key) => (
+            {overriddenProps.map((key) => (
               <span
                 key={key}
                 style={{
@@ -180,14 +178,14 @@ export default function DisplayControls({
                     width: '5px',
                     height: '5px',
                     borderRadius: '999px',
-                    backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+                    backgroundColor: MODIFICATION_LEVEL_COLORS[getLevel(key)] || MODIFICATION_LEVEL_COLORS[1],
                     flexShrink: 0,
                     display: 'inline-block',
                   }}
                 />
                 {PROP_LABELS[key] ?? key}
                 <button
-                  onClick={() => updateCustomStyle(key, null)}
+                  onClick={() => updateCustomStyle(key, resetToMaster(key))}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -197,7 +195,7 @@ export default function DisplayControls({
                     color: '#757575',
                     fontSize: '12px',
                   }}
-                  aria-label={`Unset ${PROP_LABELS[key] ?? key}`}
+                  aria-label={`${clearLabel} ${PROP_LABELS[key] ?? key}`}
                 >
                   ×
                 </button>
@@ -209,7 +207,7 @@ export default function DisplayControls({
             isDestructive
             onClick={handleClearPanel}
           >
-            Clear panel properties
+            {clearLabel} panel properties
           </Button>
         </div>
       )}

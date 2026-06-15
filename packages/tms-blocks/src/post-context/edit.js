@@ -28,6 +28,7 @@ import TransitionControls, { DEFAULT_GLOBAL as TRANSITION_DEFAULT_GLOBAL } from 
 import {
   customStyleToInlineStyle,
   customStyleToCSSString,
+  getModificationLevel,
   hasModifiedStyleProps,
 } from '../../../shared/src/style-utils';
 import useCustomStyle from '../../../shared/src/hooks/useCustomStyle';
@@ -52,6 +53,7 @@ function BreakpointStateTabs({
   clientId,
   transitionConfig,
   setTransitionConfig,
+  masterAttributes,
 }) {
   const isDesktop = activeBreakpoint === 'desktop';
 
@@ -71,6 +73,17 @@ function BreakpointStateTabs({
   const isBaseModified  = hasModifiedStyleProps(base.style,  Object.keys(base.style  || {}));
   const isHoverModified = hasModifiedStyleProps(hover.style, Object.keys(hover.style || {}));
   const isFocusModified = hasModifiedStyleProps(focus.style, Object.keys(focus.style || {}));
+
+  // Compute master styles for comparison (same breakpoint / state as the instance).
+  const masterBaseStyle  = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyle             ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.base         ?? {}))
+    : null;
+  const masterHoverStyle = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyleHover        ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.hover        ?? {}))
+    : null;
+  const masterFocusStyle = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyleFocusVisible ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.focusVisible ?? {}))
+    : null;
 
   const POST_CONTEXT_EXCLUDE = ['BackgroundImage', 'Image', 'List', 'ListItem', 'Wrapper', 'Anchor', 'ClassName', 'Transition'];
 
@@ -93,6 +106,7 @@ function BreakpointStateTabs({
                   stateStyles={{ hover: customStyleHover, focusVisible: customStyleFocusVisible }}
                   transitionConfig={transitionConfig}
                   setTransitionConfig={setTransitionConfig}
+                  masterTransitionConfig={masterAttributes?.transitionConfig ?? null}
                 />
               )}
               <StyleControls
@@ -105,6 +119,8 @@ function BreakpointStateTabs({
                 clientId={clientId}
                 exclude={POST_CONTEXT_EXCLUDE}
                 controlProps={{ Display: { useUtilityClasses: false } }}
+                masterStyle={masterHoverStyle}
+                masterAttributes={masterAttributes}
               />
             </>
           );
@@ -120,6 +136,7 @@ function BreakpointStateTabs({
                   stateStyles={{ hover: customStyleHover, focusVisible: customStyleFocusVisible }}
                   transitionConfig={transitionConfig}
                   setTransitionConfig={setTransitionConfig}
+                  masterTransitionConfig={masterAttributes?.transitionConfig ?? null}
                 />
               )}
               <StyleControls
@@ -132,6 +149,8 @@ function BreakpointStateTabs({
                 clientId={clientId}
                 exclude={POST_CONTEXT_EXCLUDE}
                 controlProps={{ Display: { useUtilityClasses: false } }}
+                masterStyle={masterFocusStyle}
+                masterAttributes={masterAttributes}
               />
             </>
           );
@@ -147,6 +166,8 @@ function BreakpointStateTabs({
               else setAttributes(p);
             }}
             clientId={clientId}
+            masterStyle={masterBaseStyle}
+            masterAttributes={masterAttributes}
             controlProps={{
               Display: { showCursor: true },
               ...(isDesktop ? {
@@ -166,7 +187,7 @@ function BreakpointStateTabs({
 
 // -- Main Edit ----------------------------------------------------------------
 
-export default function Edit({ attributes, setAttributes, clientId }) {
+export default function Edit({ attributes, setAttributes, clientId, masterAttributes }) {
   const {
     contextPostType,
     contextPostId,
@@ -258,7 +279,33 @@ export default function Edit({ attributes, setAttributes, clientId }) {
     Object.keys(responsiveStyle[key]?.focusVisible || {}).length > 0
   );
 
-  const isStyleTabModified    = isBaseModified || isHoverModified || isFocusVisibleModified || isResponsiveModified;
+  const baseKeys     = Object.keys(customStyle || {});
+  const desktopLevel = getModificationLevel(customStyle, baseKeys, masterAttributes ? (masterAttributes.customStyle ?? {}) : null);
+
+  const getBreakpointLevel = useMemo(() => (key) => {
+    const masterResp = masterAttributes?.responsiveStyle?.[key];
+    const instResp   = responsiveStyle?.[key];
+    let maxLevel = 0;
+    for (const state of ['base', 'hover', 'focusVisible']) {
+      const instStyle   = instResp?.[state] || {};
+      const masterStyle = masterAttributes
+        ? (masterResp?.[state] ?? {})
+        : null;
+      const level = getModificationLevel(instStyle, Object.keys(instStyle), masterStyle);
+      if (level > maxLevel) maxLevel = level;
+    }
+    return maxLevel;
+  }, [masterAttributes, responsiveStyle]);
+
+  const responsiveMaxLevel = useMemo(() => {
+    let max = 0;
+    for (const key of Object.keys(responsiveStyle || {})) {
+      max = Math.max(max, getBreakpointLevel(key));
+    }
+    return max;
+  }, [getBreakpointLevel, responsiveStyle]);
+
+  const stylesTabLevel = Math.max(desktopLevel, responsiveMaxLevel, hasTransitionChanges ? 1 : 0);
 
 
   // -- Block props ------------------------------------------------------------
@@ -292,7 +339,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
             className="tmsblocks-post-context-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
               { name: 'wrapper', title: 'Wrapper' },
-              { name: 'styles',  title: <ControlLabel label="Styles"  isSet={isStyleTabModified} /> },
+              { name: 'styles',  title: <ControlLabel label="Styles"  level={stylesTabLevel} /> },
             ]}
           >
             {(tab) => {
@@ -361,11 +408,13 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
                     isDesktopModified={isBaseModified || isHoverModified || isFocusVisibleModified}
+                    desktopLevel={desktopLevel}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
                     }
+                    getBreakpointLevel={getBreakpointLevel}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />
@@ -386,6 +435,7 @@ export default function Edit({ attributes, setAttributes, clientId }) {
                     clientId={clientId}
                     transitionConfig={transitionConfig}
                     setTransitionConfig={setTransitionConfig}
+                    masterAttributes={masterAttributes}
                   />
                 </>
               );

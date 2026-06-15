@@ -20,7 +20,7 @@ import UnitControls, { KEYWORDS_GLOBAL } from './UnitControls';
 import ColorControls from './ColorControls';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, hasModifiedStyleProps, isStylePropSet } from '../style-utils';
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -81,7 +81,7 @@ function ColorButton({ color, label, onClick }) {
 
 // â”€â”€â”€ Single border side row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-function BorderSideRow({ label, widthProp, styleProp, colorProp, customStyle, updateCustomStyle, customBorderStyle }) {
+function BorderSideRow({ label, widthProp, styleProp, colorProp, customStyle, updateCustomStyle, customBorderStyle, masterStyle }) {
   const handleWidthChange = (val) => {
     const isEmpty = val.value === '' || val.value === null || val.value === undefined;
     const isSpecialUnit = val.unit === 'custom' || val.unit === 'size-presets' || val.unit === 'font-size-presets';
@@ -90,6 +90,9 @@ function BorderSideRow({ label, widthProp, styleProp, colorProp, customStyle, up
     });
   };
 
+  const sideLevel = getModificationLevel(customStyle, [widthProp, styleProp, colorProp], masterStyle);
+  const colorLevel = getModificationLevel(customStyle, [colorProp], masterStyle);
+
   return (
     <div style={{ marginBottom: '4px' }}>
       {/* Label row: side name | style select | color swatch */}
@@ -97,11 +100,7 @@ function BorderSideRow({ label, widthProp, styleProp, colorProp, customStyle, up
         <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: '#1e1e1e', minWidth: '44px' }}>
           <ControlLabel
             label={label}
-            isSet={
-              isStylePropSet(customStyle, widthProp) ||
-              isStylePropSet(customStyle, styleProp) ||
-              isStylePropSet(customStyle, colorProp)
-            }
+            level={sideLevel}
           />
         </span>
 
@@ -120,7 +119,7 @@ function BorderSideRow({ label, widthProp, styleProp, colorProp, customStyle, up
           renderToggle={({ onToggle }) => (
             <Flex align="center" style={{ gap: '6px' }}>
               <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#1e1e1e' }}>
-                <ControlLabel label="Color" isSet={isStylePropSet(customStyle, colorProp)} />
+                <ControlLabel label="Color" level={colorLevel} />
               </span>
               <ColorButton
                 color={customStyle[colorProp]}
@@ -181,7 +180,7 @@ function BorderSideRow({ label, widthProp, styleProp, colorProp, customStyle, up
 
 // â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export default function BorderControls({ customStyle = {}, updateCustomStyle }) {
+export default function BorderControls({ customStyle = {}, updateCustomStyle, masterStyle = null }) {
   const {
     borderWidth, borderTopWidth, borderRightWidth, borderBottomWidth, borderLeftWidth,
     borderStyle, borderTopStyle, borderRightStyle, borderBottomStyle, borderLeftStyle,
@@ -200,28 +199,15 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
     !!(borderTopLeftRadius || borderTopRightRadius || borderBottomLeftRadius || borderBottomRightRadius)
   );
 
-  const isModified = hasModifiedStyleProps(customStyle, [
-    'borderWidth',
-    'borderTopWidth',
-    'borderRightWidth',
-    'borderBottomWidth',
-    'borderLeftWidth',
-    'borderStyle',
-    'borderTopStyle',
-    'borderRightStyle',
-    'borderBottomStyle',
-    'borderLeftStyle',
-    'borderColor',
-    'borderTopColor',
-    'borderRightColor',
-    'borderBottomColor',
-    'borderLeftColor',
-    'borderRadius',
-    'borderTopLeftRadius',
-    'borderTopRightRadius',
-    'borderBottomLeftRadius',
-    'borderBottomRightRadius'
-  ]);
+  const BORDER_PROPS = [
+    'borderWidth', 'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+    'borderStyle', 'borderTopStyle', 'borderRightStyle', 'borderBottomStyle', 'borderLeftStyle',
+    'borderColor', 'borderTopColor', 'borderRightColor', 'borderBottomColor', 'borderLeftColor',
+    'borderRadius', 'borderTopLeftRadius', 'borderTopRightRadius', 'borderBottomLeftRadius', 'borderBottomRightRadius',
+  ];
+  const borderLevel = getModificationLevel(customStyle, BORDER_PROPS, masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
 
   // â”€â”€ Auto border-style effect â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   useEffect(() => {
@@ -329,7 +315,7 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
   // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   return (
-    <PanelBody title={<PanelTitle title="Border" isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Border" level={borderLevel} />} initialOpen={false}>
 
       {/* Options */}
       <ToggleControl
@@ -352,11 +338,7 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
             <span style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', color: '#1e1e1e' }}>
               <ControlLabel
                 label="Border"
-                isSet={
-                  isStylePropSet(customStyle, 'borderWidth') ||
-                  isStylePropSet(customStyle, 'borderStyle') ||
-                  isStylePropSet(customStyle, 'borderColor')
-                }
+                level={getModificationLevel(customStyle, ['borderWidth', 'borderStyle', 'borderColor'], masterStyle)}
               />
             </span>
 
@@ -375,7 +357,7 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
               renderToggle={({ onToggle }) => (
                 <Flex align="center" style={{ gap: '6px' }}>
                   <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#1e1e1e' }}>
-                    <ControlLabel label="Color" isSet={isStylePropSet(customStyle, 'borderColor')} />
+                    <ControlLabel label="Color" level={getModificationLevel(customStyle, ['borderColor'], masterStyle)} />
                   </span>
                   <ColorButton
                     color={borderColor}
@@ -423,7 +405,7 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
           </Flex>
 
           <UnitControls
-            label={<ControlLabel label="Width" isSet={isStylePropSet(customStyle, 'borderWidth')} />}
+            label={<ControlLabel label="Width" level={getModificationLevel(customStyle, ['borderWidth'], masterStyle)} />}
             value={borderWidth}
             onChange={handleUnifiedWidthChange}
             allowedUnits={WIDTH_UNITS}
@@ -445,6 +427,7 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
                 customStyle={customStyle}
                 updateCustomStyle={updateCustomStyle}
                 customBorderStyle={customBorderStyle}
+                masterStyle={masterStyle}
               />
               {i < SIDES.length - 1 && (
                 <hr style={{ margin: '8px 0', borderTop: '1px solid #eee' }} />
@@ -466,7 +449,7 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
 
       {!useIndividualRadius ? (
         <UnitControls
-          label={<ControlLabel label="Border Radius" isSet={isStylePropSet(customStyle, 'borderRadius')} />}
+          label={<ControlLabel label="Border Radius" level={getModificationLevel(customStyle, ['borderRadius'], masterStyle)} />}
           value={borderRadius}
           onChange={(val) => updateCustomStyle({ borderRadius: { value: val.value, unit: val.unit } })}
           allowedUnits={RADIUS_UNITS}
@@ -476,7 +459,7 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
         CORNERS.map(({ label, prop }) => (
           <UnitControls
             key={prop}
-            label={<ControlLabel label={label} isSet={isStylePropSet(customStyle, prop)} />}
+            label={<ControlLabel label={label} level={getModificationLevel(customStyle, [prop], masterStyle)} />}
             value={customStyle[prop]}
             onChange={(val) => updateCustomStyle({ [prop]: { value: val.value, unit: val.unit } })}
             allowedUnits={RADIUS_UNITS}
@@ -484,35 +467,18 @@ export default function BorderControls({ customStyle = {}, updateCustomStyle }) 
           />
         ))
       )}
-      {isModified && (
+      {borderLevel > 0 && (
         <Button
           variant="secondary"
           isDestructive
-          onClick={() => updateCustomStyle({
-            borderWidth: null,
-            borderStyle: null,
-            borderColor: null,
-            borderTopWidth: null,
-            borderRightWidth: null,
-            borderBottomWidth: null,
-            borderLeftWidth: null,
-            borderTopStyle: null,
-            borderRightStyle: null,
-            borderBottomStyle: null,
-            borderLeftStyle: null,
-            borderTopColor: null,
-            borderRightColor: null,
-            borderBottomColor: null,
-            borderLeftColor: null,
-            borderRadius: null,
-            borderTopLeftRadius: null,
-            borderTopRightRadius: null,
-            borderBottomRightRadius: null,
-            borderBottomLeftRadius: null,
-          })}
+          onClick={() => {
+            const resetValues = {};
+            BORDER_PROPS.forEach((p) => { resetValues[p] = resetToMaster(p); });
+            updateCustomStyle(resetValues);
+          }}
           style={{ marginTop: '8px' }}
         >
-          Clear panel properties
+          {`${clearLabel} panel properties`}
         </Button>
       )}
     </PanelBody>

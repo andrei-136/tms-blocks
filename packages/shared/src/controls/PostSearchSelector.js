@@ -203,14 +203,22 @@ export function SelectedPostPreview({ postType, postId, onClear }) {
  *   sourcePostId    - current value of the `sourcePostId` attribute
  *   setAttributes   - block setAttributes
  */
-export default function SourcePostControls({ sourcePostType, sourcePostId, setAttributes }) {
+export default function SourcePostControls({ sourcePostType, sourcePostId, setAttributes, masterAttributes = null }) {
   const { options: postTypeOptions, restBaseBySlug } = usePostTypeOptions();
   const effectiveType = sourcePostType || 'post';
+
+  // Dot for post type — orange when instance differs from master
+  const postTypeDot = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const masterVal = masterAttributes.sourcePostType;
+    if (masterVal === undefined || masterVal === null) return (effectiveType !== 'post' ? 3 : 0);
+    return masterVal !== effectiveType ? 3 : 0;
+  }, [masterAttributes, effectiveType]);
 
   return (
     <>
       <SelectControl
-        label="Post Type"
+        label={<ControlLabel label="Post Type" level={postTypeDot} />}
         value={effectiveType}
         options={postTypeOptions}
         onChange={(val) => setAttributes({ sourcePostType: val, sourcePostId: 0 })}

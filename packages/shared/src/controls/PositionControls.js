@@ -3,7 +3,7 @@ import { PanelBody, SelectControl, TextControl, Button } from '@wordpress/compon
 import UnitControls, { KEYWORDS_GLOBAL } from './UnitControls';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, hasModifiedStyleProps, isStylePropSet, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const POSITION_PROPS = ['position', 'top', 'right', 'bottom', 'left', 'zIndex'];
 
@@ -18,14 +18,17 @@ const PROP_LABELS = {
 
 const OFFSET_UNITS = ['px', 'rem', 'em', '%', 'vw', 'vh', 'auto', 'keywords', 'custom'];
 
-export default function PositionControls({ customStyle, updateCustomStyle }) {
-  const isModified = hasModifiedStyleProps(customStyle, POSITION_PROPS);
+export default function PositionControls({ customStyle, updateCustomStyle, masterStyle = null }) {
+  const positionLevel = getModificationLevel(customStyle, POSITION_PROPS, masterStyle);
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
   const setProps = POSITION_PROPS.filter((key) => isStylePropSet(customStyle, key));
 
   return (
-    <PanelBody title={<PanelTitle title="Position" isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Position" level={positionLevel} />} initialOpen={false}>
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Position" isSet={isStylePropSet(customStyle, 'position')} />
+        <ControlLabel label="Position" level={getLevel('position')} />
       </div>
       <SelectControl
         label="Position"
@@ -45,7 +48,7 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
       {customStyle.position && customStyle.position !== '' && customStyle.position !== 'static' && (
         <>
           <UnitControls
-            label={<ControlLabel label="Top" isSet={isStylePropSet(customStyle, 'top')} />}
+            label={<ControlLabel label="Top" level={getLevel('top')} />}
             value={customStyle.top}
             onChange={(val) => updateCustomStyle('top', val.value, val.unit)}
             allowedUnits={OFFSET_UNITS}
@@ -54,7 +57,7 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
             max={500}
           />
           <UnitControls
-            label={<ControlLabel label="Right" isSet={isStylePropSet(customStyle, 'right')} />}
+            label={<ControlLabel label="Right" level={getLevel('right')} />}
             value={customStyle.right}
             onChange={(val) => updateCustomStyle('right', val.value, val.unit)}
             allowedUnits={OFFSET_UNITS}
@@ -63,7 +66,7 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
             max={500}
           />
           <UnitControls
-            label={<ControlLabel label="Bottom" isSet={isStylePropSet(customStyle, 'bottom')} />}
+            label={<ControlLabel label="Bottom" level={getLevel('bottom')} />}
             value={customStyle.bottom}
             onChange={(val) => updateCustomStyle('bottom', val.value, val.unit)}
             allowedUnits={OFFSET_UNITS}
@@ -72,7 +75,7 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
             max={500}
           />
           <UnitControls
-            label={<ControlLabel label="Left" isSet={isStylePropSet(customStyle, 'left')} />}
+            label={<ControlLabel label="Left" level={getLevel('left')} />}
             value={customStyle.left}
             onChange={(val) => updateCustomStyle('left', val.value, val.unit)}
             allowedUnits={OFFSET_UNITS}
@@ -82,7 +85,7 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
           />
 
           <div style={{ marginBottom: '8px' }}>
-            <ControlLabel label="Z Index" isSet={isStylePropSet(customStyle, 'zIndex')} />
+            <ControlLabel label="Z Index" level={getLevel('zIndex')} />
           </div>
           <TextControl
             label="Z Index"
@@ -94,7 +97,7 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
         </>
       )}
 
-      {isModified && (
+      {positionLevel > 0 && (
         <div style={{ marginTop: '12px', borderTop: '1px solid #e0e0e0', paddingTop: '8px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
             {setProps.map((key) => (
@@ -116,14 +119,14 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
                     width: '5px',
                     height: '5px',
                     borderRadius: '999px',
-                    backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+                    backgroundColor: MODIFICATION_LEVEL_COLORS[getLevel(key)] || MODIFICATION_LEVEL_COLORS[1],
                     flexShrink: 0,
                     display: 'inline-block',
                   }}
                 />
                 {PROP_LABELS[key] ?? key}
                 <button
-                  onClick={() => updateCustomStyle(key, null)}
+                  onClick={() => updateCustomStyle(key, resetToMaster(key))}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -133,7 +136,7 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
                     color: '#757575',
                     fontSize: '12px',
                   }}
-                  aria-label={`Unset ${PROP_LABELS[key] ?? key}`}
+                  aria-label={`${clearLabel} ${PROP_LABELS[key] ?? key}`}
                 >
                   ×
                 </button>
@@ -143,16 +146,13 @@ export default function PositionControls({ customStyle, updateCustomStyle }) {
           <Button
             variant="secondary"
             isDestructive
-            onClick={() => updateCustomStyle({
-              position: null,
-              top: null,
-              right: null,
-              bottom: null,
-              left: null,
-              zIndex: null,
-            })}
+            onClick={() => {
+              const resetValues = {};
+              setProps.forEach((p) => { resetValues[p] = resetToMaster(p); });
+              updateCustomStyle(resetValues);
+            }}
           >
-            Clear panel properties
+            {`${clearLabel} panel properties`}
           </Button>
         </div>
       )}

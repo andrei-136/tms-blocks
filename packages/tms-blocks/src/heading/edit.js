@@ -21,7 +21,7 @@ import {
   ToolbarGroup,
 } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
-import { customStyleToCSSString, hasModifiedStyleProps } from '../../../shared/src/style-utils';
+import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps } from '../../../shared/src/style-utils';
 import { useCustomStyle, useUniqueId, useDynamicField, useBreakpointStyles } from '../../../shared/src/hooks';
 import {
   StyleControls, IdentityControls,
@@ -140,6 +140,7 @@ function BreakpointStateTabs({
   attributes,
   setAttributes,
   clientId,
+  masterAttributes,
 }) {
   const isDesktop = activeBreakpoint === 'desktop';
 
@@ -156,14 +157,28 @@ function BreakpointStateTabs({
     updater: isDesktop ? updateCustomStyleFocusVisible : getUpdater(activeBreakpoint, 'focusVisible'),
   };
 
-  const isBaseModified  = hasModifiedStyleProps(base.style,  Object.keys(base.style  || {}));
-  const isHoverModified = hasModifiedStyleProps(hover.style, Object.keys(hover.style || {}));
-  const isFocusModified = hasModifiedStyleProps(focus.style, Object.keys(focus.style || {}));
+  // Compute master styles for comparison (same breakpoint / state as the instance).
+  // When masterAttributes is present but lacks a specific style key, default to
+  // {} so that any instance-only values are treated as overrides (orange), not
+  // standalone (blue).
+  const masterBaseStyle  = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyle             ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.base         ?? {}))
+    : null;
+  const masterHoverStyle = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyleHover        ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.hover        ?? {}))
+    : null;
+  const masterFocusStyle = masterAttributes
+    ? (isDesktop ? (masterAttributes.customStyleFocusVisible ?? {}) : (masterAttributes.responsiveStyle?.[activeBreakpoint]?.focusVisible ?? {}))
+    : null;
+
+  const baseLevel  = getModificationLevel(base.style,  Object.keys(base.style  || {}), masterBaseStyle);
+  const hoverLevel = getModificationLevel(hover.style, Object.keys(hover.style || {}), masterHoverStyle);
+  const focusLevel = getModificationLevel(focus.style, Object.keys(focus.style || {}), masterFocusStyle);
 
   const tabs = [
-    { name: 'base',          title: <ControlLabel label="Base"          isSet={isBaseModified}  /> },
-    { name: 'hover',         title: <ControlLabel label="Hover"         isSet={isHoverModified} /> },
-    { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" isSet={isFocusModified} /> },
+    { name: 'base',          title: <ControlLabel label="Base"          level={baseLevel}  /> },
+    { name: 'hover',         title: <ControlLabel label="Hover"         level={hoverLevel} /> },
+    { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" level={focusLevel} /> },
   ];
 
   return (
@@ -181,6 +196,8 @@ function BreakpointStateTabs({
               clientId={clientId}
               exclude={HEADING_STYLE_EXCLUDE}
               controlProps={{ Display: { useUtilityClasses: false } }}
+              masterStyle={masterHoverStyle}
+              masterAttributes={masterAttributes}
             />
           );
         }
@@ -197,6 +214,8 @@ function BreakpointStateTabs({
               clientId={clientId}
               exclude={HEADING_STYLE_EXCLUDE}
               controlProps={{ Display: { useUtilityClasses: false } }}
+              masterStyle={masterFocusStyle}
+              masterAttributes={masterAttributes}
             />
           );
         }
@@ -212,6 +231,8 @@ function BreakpointStateTabs({
             }}
             clientId={clientId}
             exclude={HEADING_STYLE_EXCLUDE}
+            masterStyle={masterBaseStyle}
+            masterAttributes={masterAttributes}
           />
         );
       }}
@@ -301,6 +322,7 @@ function EditSelected({
   postMetaOptions,
   termMetaOptionsByTax,
   userMetaOptions,
+  masterAttributes,
 }) {
   const {
     uniqueId,
@@ -369,16 +391,81 @@ function EditSelected({
     [breakpointOverrides, responsiveStyle, customBreakpoints]
   );
 
-  // -- Modified indicators ----------------------------------------------------
+  // -- Dot system: level-based comparison against master ---------------------
 
   const baseKeys           = useMemo(() => Object.keys(customStyle || {}), [customStyle]);
+  const hoverKeys          = useMemo(() => Object.keys(customStyleHover || {}), [customStyleHover]);
+  const focusKeys          = useMemo(() => Object.keys(customStyleFocusVisible || {}), [customStyleFocusVisible]);
   const isBaseModified     = hasModifiedStyleProps(customStyle, baseKeys);
   const isResponsiveModified = Object.keys(responsiveStyle || {}).some((key) =>
     Object.keys(responsiveStyle[key]?.base         || {}).length > 0 ||
     Object.keys(responsiveStyle[key]?.hover        || {}).length > 0 ||
     Object.keys(responsiveStyle[key]?.focusVisible || {}).length > 0
   );
-  const isStyleTabModified   = isBaseModified || isResponsiveModified;
+
+  const desktopLevel      = getModificationLevel(customStyle,             baseKeys,  masterAttributes ? (masterAttributes.customStyle             ?? {}) : null);
+  const hoverDesktopLevel  = getModificationLevel(customStyleHover,        hoverKeys, masterAttributes ? (masterAttributes.customStyleHover        ?? {}) : null);
+  const focusDesktopLevel  = getModificationLevel(customStyleFocusVisible, focusKeys, masterAttributes ? (masterAttributes.customStyleFocusVisible ?? {}) : null);
+
+  // Dot for heading level override — orange when instance level differs from master.
+  // masterAttributes.level may be absent if the master snapshot is stale;
+  // treat a missing master value as "different" → orange dot.
+  const headingLevelDot = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const masterLevel = masterAttributes.level;
+    if (masterLevel === undefined || masterLevel === null) return (safeLevel !== 2 ? 3 : 0);
+    return masterLevel !== safeLevel ? 3 : 0;
+  }, [masterAttributes, safeLevel]);
+
+  // Breakpoint-level dots: compare responsive styles against master's responsive styles.
+  // When masterAttributes exists, an absent responsive-style entry is treated as
+  // an empty baseline {} so that any instance-only values show as overrides (orange).
+  const getBreakpointLevel = useMemo(() => (key) => {
+    const masterResp = masterAttributes?.responsiveStyle?.[key];
+    const instResp   = responsiveStyle?.[key];
+    let maxLevel = 0;
+    for (const state of ['base', 'hover', 'focusVisible']) {
+      const instStyle   = instResp?.[state] || {};
+      const masterStyle = masterAttributes
+        ? (masterResp?.[state] ?? {})
+        : null;
+      const level = getModificationLevel(instStyle, Object.keys(instStyle), masterStyle);
+      if (level > maxLevel) maxLevel = level;
+    }
+    return maxLevel;
+  }, [masterAttributes, responsiveStyle]);
+
+  // Aggregate highest level across all desktop states + all responsive breakpoints
+  const responsiveMaxLevel = useMemo(() => {
+    let max = 0;
+    for (const key of Object.keys(responsiveStyle || {})) {
+      max = Math.max(max, getBreakpointLevel(key));
+    }
+    return max;
+  }, [getBreakpointLevel, responsiveStyle]);
+
+  const stylesTabLevel = Math.max(desktopLevel, hoverDesktopLevel, focusDesktopLevel, responsiveMaxLevel);
+
+  // Wrapper tab dot: aggregate override level across all wrapper attributes
+  const wrapperTabLevel = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const attrNames = ['tagName', 'anchorId', 'tmsClassName', 'ariaLabel', 'ariaRole'];
+    let maxLevel = 0;
+    for (const key of attrNames) {
+      const def = key === 'tagName' ? 'div' : '';
+      const inst = attributes[key] || def;
+      const master = masterAttributes[key] || def;
+      if (inst === def && master === def) continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    for (const key of ['customAttributes', 'extraAriaAttributes']) {
+      const inst = JSON.stringify(attributes[key] || []);
+      const master = JSON.stringify(masterAttributes[key] || []);
+      if (inst === '[]' && master === '[]') continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    return maxLevel;
+  }, [masterAttributes, attributes]);
 
 
   // -- Canvas styles ----------------------------------------------------------
@@ -441,8 +528,8 @@ function EditSelected({
           <TabPanel
             className="tmsblocks-heading-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
-              { name: 'wrapper', title: 'Wrapper' },
-              { name: 'styles',  title: <ControlLabel label="Styles"  isSet={isStyleTabModified} /> },
+              { name: 'wrapper', title: <ControlLabel label="Wrapper" level={wrapperTabLevel} /> },
+              { name: 'styles',  title: <ControlLabel label="Styles"  level={stylesTabLevel} /> },
             ]}
           >
             {(tab) => {
@@ -453,7 +540,7 @@ function EditSelected({
                   <div style={{ backgroundColor: 'var(--tms-cold-white)', padding: '16px' }}>
                     <div style={{ borderBottom: '1px solid #eee', paddingBottom: '16px', marginBottom: '16px' }}>
                       <SelectControl
-                        label="Heading Level"
+                        label={<ControlLabel label="Heading Level" level={headingLevelDot} />}
                         value={String(safeLevel)}
                         options={HEADING_OPTIONS.map(({ label, level: optionLevel }) => ({ label, value: String(optionLevel) }))}
                         onChange={(newLevel) => setAttributes({ level: Number(newLevel) })}
@@ -508,13 +595,14 @@ function EditSelected({
                             showPreview={!!(resolvedPath || dynamicPath)}
                             previewLabel="Preview"
                             previewValue={previewHtml || previewError || ''}
+                            masterAttributes={masterAttributes}
                           />
                         )}
                       </div>
                     </div>
-                    <AriaControls attributes={attributes} setAttributes={setAttributes} />
-                    <CustomAttributesControls attributes={attributes} setAttributes={setAttributes} />
-                    <IdentityControls attributes={attributes} setAttributes={setAttributes} />
+                    <AriaControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
+                    <CustomAttributesControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
+                    <IdentityControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
                   </div>
                 );
               }
@@ -527,11 +615,13 @@ function EditSelected({
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
                     isDesktopModified={isBaseModified}
+                    desktopLevel={desktopLevel}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
                     }
+                    getBreakpointLevel={getBreakpointLevel}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />
@@ -550,6 +640,7 @@ function EditSelected({
                     attributes={attributes}
                     setAttributes={setAttributes}
                     clientId={clientId}
+                    masterAttributes={masterAttributes}
                   />
                 </>
               );
@@ -633,7 +724,7 @@ function EditSelected({
 // -- Entry point --------------------------------------------------------------
 
 export default function Edit(props) {
-  const { clientId, attributes, context, setAttributes } = props;
+  const { clientId, attributes, context, setAttributes, masterAttributes } = props;
   const {
     uniqueId,
     isDynamic               = false,

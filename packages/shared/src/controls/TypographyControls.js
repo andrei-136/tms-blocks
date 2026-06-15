@@ -4,7 +4,7 @@ import { useSettings } from '@wordpress/block-editor';
 import UnitControls from './UnitControls';
 import PanelTitle from './PanelTitle';
 import ControlLabel from './ControlLabel';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const TYPOGRAPHY_PROPS = [
   'fontFamily',
@@ -121,7 +121,7 @@ const composeTextIndent = ({ value, unit, hasHanging, hasEachLine }) => {
   return parts.length ? parts.join(' ') : null;
 };
 
-export default function TypographyControls({ customStyle, updateCustomStyle }) {
+export default function TypographyControls({ customStyle, updateCustomStyle, masterStyle = null }) {
   const [textIndentUnit, setTextIndentUnit] = React.useState('px');
 
   const [
@@ -140,35 +140,44 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
     customFontFamilies
   ]);
 
-  const isTypographyModified = hasModifiedStyleProps(customStyle, TYPOGRAPHY_PROPS);
-  const isTypographyAdvancedModified = hasModifiedStyleProps(customStyle, TYPOGRAPHY_ADVANCED_PROPS);
-  const setProps = TYPOGRAPHY_PROPS.filter((key) => isStylePropSet(customStyle, key));
+  const typoLevel = getModificationLevel(customStyle, TYPOGRAPHY_PROPS, masterStyle);
+  const typoAdvancedLevel = getModificationLevel(customStyle, TYPOGRAPHY_ADVANCED_PROPS, masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
+
+  // Only show properties that are overridden (orange, level 3) on instances, or set on standalone
+  const overriddenProps = TYPOGRAPHY_PROPS.filter(
+    (p) => getModificationLevel(customStyle, [p], masterStyle) >= (masterStyle ? 3 : 1)
+  );
+  const hasOverrides = overriddenProps.length > 0;
+
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
   const parsedTextIndent = React.useMemo(
     () => parseTextIndent(customStyle.textIndent, textIndentUnit),
     [customStyle.textIndent, textIndentUnit]
   );
 
   return (
-    <PanelBody title={<PanelTitle title="Typography" isModified={isTypographyModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Typography" level={typoLevel} />} initialOpen={false}>
 
       {/* Type properties group */}
       <div style={GROUP_STYLE('hsl(251, 50%, 94%)')}>
         <SelectControl
-          label={<ControlLabel label="Font Family" isSet={isStylePropSet(customStyle, 'fontFamily')} />}
+          label={<ControlLabel label="Font Family" level={getLevel('fontFamily')} />}
           value={customStyle.fontFamily || ''}
           options={fontFamilyOptions}
           onChange={(val) => updateCustomStyle('fontFamily', val || null)}
         />
 
         <UnitControls
-          label={<ControlLabel label="Font Size" isSet={isStylePropSet(customStyle, 'fontSize')} />}
+          label={<ControlLabel label="Font Size" level={getLevel('fontSize')} />}
           value={customStyle.fontSize}
           onChange={(val) => updateCustomStyle('fontSize', val.value, val.unit)}
           allowedUnits={['px', 'rem', 'em', '%', 'vw', 'vh', 'custom', 'font-size-presets']}
         />
 
         <SelectControl
-          label={<ControlLabel label="Font Weight" isSet={isStylePropSet(customStyle, 'fontWeight')} />}
+          label={<ControlLabel label="Font Weight" level={getLevel('fontWeight')} />}
           value={customStyle.fontWeight || ''}
           options={[
             { label: 'Default', value: '' },
@@ -188,7 +197,7 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
         />
 
         <SelectControl
-          label={<ControlLabel label="Font Style" isSet={isStylePropSet(customStyle, 'fontStyle')} />}
+          label={<ControlLabel label="Font Style" level={getLevel('fontStyle')} />}
           value={customStyle.fontStyle || ''}
           options={[
             { label: 'Default', value: '' },
@@ -200,14 +209,14 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
         />
 
         <UnitControls
-          label={<ControlLabel label="Line Height" isSet={isStylePropSet(customStyle, 'lineHeight')} />}
+          label={<ControlLabel label="Line Height" level={getLevel('lineHeight')} />}
           value={customStyle.lineHeight}
           onChange={(val) => updateCustomStyle('lineHeight', val.value, val.unit)}
           allowedUnits={['unitless', 'em', 'rem', 'px', '%', 'custom']}
         />
 
         <UnitControls
-          label={<ControlLabel label="Letter Spacing" isSet={isStylePropSet(customStyle, 'letterSpacing')} />}
+          label={<ControlLabel label="Letter Spacing" level={getLevel('letterSpacing')} />}
           value={customStyle.letterSpacing}
           onChange={(val) => updateCustomStyle('letterSpacing', val.value, val.unit)}
           allowedUnits={['px', 'em', 'rem', '%', 'custom']}
@@ -217,7 +226,7 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
       {/* Text styling group */}
       <div style={GROUP_STYLE('hsl(251, 50%, 91%)')}>
         <SelectControl
-          label={<ControlLabel label="Text Align" isSet={isStylePropSet(customStyle, 'textAlign')} />}
+          label={<ControlLabel label="Text Align" level={getLevel('textAlign')} />}
           value={customStyle.textAlign || ''}
           options={[
             { label: 'Default', value: '' },
@@ -230,7 +239,7 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
         />
 
         <SelectControl
-          label={<ControlLabel label="Text Transform" isSet={isStylePropSet(customStyle, 'textTransform')} />}
+          label={<ControlLabel label="Text Transform" level={getLevel('textTransform')} />}
           value={customStyle.textTransform || ''}
           options={[
             { label: 'Default', value: '' },
@@ -243,7 +252,7 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
         />
 
         <SelectControl
-          label={<ControlLabel label="Text Decoration" isSet={isStylePropSet(customStyle, 'textDecoration')} />}
+          label={<ControlLabel label="Text Decoration" level={getLevel('textDecoration')} />}
           value={customStyle.textDecoration || ''}
           options={[
             { label: 'Default', value: '' },
@@ -259,13 +268,13 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
       {/* Advanced */}
       <div style={{ marginTop: '4px' }}>
         <PanelBody
-          title={<PanelTitle title="Advanced" isModified={isTypographyAdvancedModified} />}
+          title={<PanelTitle title="Advanced" level={typoAdvancedLevel} />}
           initialOpen={false}
           style={{ margin: 0, padding: 0 }}
         >
           <div style={{ margin: '-16px', marginTop: '4px' }}>
             <SelectControl
-              label={<ControlLabel label="Text Wrap" isSet={isStylePropSet(customStyle, 'textWrap')} />}
+              label={<ControlLabel label="Text Wrap" level={getLevel('textWrap')} />}
               value={customStyle.textWrap || ''}
               options={[
                 { label: 'Default', value: '' },
@@ -278,7 +287,7 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
             />
 
             <SelectControl
-              label={<ControlLabel label="White Space" isSet={isStylePropSet(customStyle, 'whiteSpace')} />}
+              label={<ControlLabel label="White Space" level={getLevel('whiteSpace')} />}
               value={customStyle.whiteSpace || ''}
               options={[
                 { label: 'Default', value: '' },
@@ -293,7 +302,7 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
             />
 
             <SelectControl
-              label={<ControlLabel label="Word Break" isSet={isStylePropSet(customStyle, 'wordBreak')} />}
+              label={<ControlLabel label="Word Break" level={getLevel('wordBreak')} />}
               value={customStyle.wordBreak || ''}
               options={[
                 { label: 'Default', value: '' },
@@ -307,7 +316,7 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
 
             {/* Text Indent */}
             <div>
-              <ControlLabel label="Text Indent" isSet={isStylePropSet(customStyle, 'textIndent')} />
+              <ControlLabel label="Text Indent" level={getLevel('textIndent')} />
               <UnitControls
                 label={null}
                 value={{ value: parsedTextIndent.value, unit: parsedTextIndent.unit }}
@@ -364,10 +373,10 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
         </PanelBody>
       </div>
 
-      {isTypographyModified && (
+      {hasOverrides && (
         <div style={{ marginTop: '12px', borderTop: '1px solid #e0e0e0', paddingTop: '8px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-            {setProps.map((key) => (
+            {overriddenProps.map((key) => (
               <span
                 key={key}
                 style={{
@@ -386,14 +395,14 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
                     width: '5px',
                     height: '5px',
                     borderRadius: '999px',
-                    backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+                    backgroundColor: MODIFICATION_LEVEL_COLORS[getLevel(key)] || MODIFICATION_LEVEL_COLORS[1],
                     flexShrink: 0,
                     display: 'inline-block',
                   }}
                 />
                 {PROP_LABELS[key] ?? key}
                 <button
-                  onClick={() => updateCustomStyle(key, null)}
+                  onClick={() => updateCustomStyle(key, resetToMaster(key))}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -403,7 +412,7 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
                     color: '#757575',
                     fontSize: '12px',
                   }}
-                  aria-label={`Unset ${PROP_LABELS[key] ?? key}`}
+                  aria-label={`${clearLabel} ${PROP_LABELS[key] ?? key}`}
                 >
                   ×
                 </button>
@@ -413,23 +422,13 @@ export default function TypographyControls({ customStyle, updateCustomStyle }) {
           <Button
             variant="secondary"
             isDestructive
-            onClick={() => updateCustomStyle({
-              fontFamily: null,
-              textAlign: null,
-              fontSize: null,
-              lineHeight: null,
-              fontWeight: null,
-              fontStyle: null,
-              textTransform: null,
-              textDecoration: null,
-              letterSpacing: null,
-              textWrap: null,
-              whiteSpace: null,
-              wordBreak: null,
-              textIndent: null,
-            })}
+            onClick={() => {
+              const resetValues = {};
+              overriddenProps.forEach((p) => { resetValues[p] = resetToMaster(p); });
+              updateCustomStyle(resetValues);
+            }}
           >
-            Clear panel properties
+            {clearLabel} panel properties
           </Button>
         </div>
       )}

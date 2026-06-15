@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BaseControl, SelectControl, TextControl, TextareaControl } from '@wordpress/components';
 import DynamicFieldStepBuilder from './DynamicFieldStepBuilder';
 import SourcePostControls from './PostSearchSelector';
@@ -42,6 +42,8 @@ function BuilderSection({ children }) {
   );
 }
 
+import ControlLabel from './ControlLabel';
+
 export default function DynamicFieldSettings({
   steps = [],
   path = '',
@@ -73,19 +75,36 @@ export default function DynamicFieldSettings({
   previewValue = '',
   previewHelp = '',
   showValueOptions = true,
+  masterAttributes = null,
 }) {
+  // Dot for post source — orange when instance differs from master.
+  // masterAttributes.postSource may be absent from the snapshot.
+  const postSourceDot = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const masterVal = masterAttributes.postSource;
+    if (masterVal === undefined || masterVal === null) return (postSource !== 'current' ? 3 : 0);
+    return masterVal !== postSource ? 3 : 0;
+  }, [masterAttributes, postSource]);
   const hasDateStep = Array.isArray(steps)
     && steps.some((step) => step?.type === 'post' && (step?.value === 'date' || step?.value === 'modified'));
 
   const hasCommentsStep = Array.isArray(steps)
     && steps.some((step) => step?.type === 'comments');
 
+  // Dot helpers: orange when instance value differs from master
+  const getDot = (key, currentVal, defaultVal = '') => {
+    if (!masterAttributes) return 0;
+    const masterVal = masterAttributes[key];
+    if (masterVal === undefined || masterVal === null) return (currentVal !== defaultVal ? 3 : 0);
+    return masterVal !== currentVal ? 3 : 0;
+  };
+
   return (
     <BuilderSection>
       {showPostSourceControls && (
         <>
           <SelectControl
-            label="Post Source"
+            label={<ControlLabel label="Post Source" level={postSourceDot} />}
             value={postSource}
             options={[
               { label: 'Current', value: 'current' },
@@ -105,6 +124,7 @@ export default function DynamicFieldSettings({
               sourcePostType={sourcePostType}
               sourcePostId={sourcePostId}
               setAttributes={setAttributes}
+              masterAttributes={masterAttributes}
             />
           )}
         </>
@@ -140,7 +160,7 @@ export default function DynamicFieldSettings({
       {showValueOptions && (
         <>
           <TextControl
-            label="Separator"
+            label={<ControlLabel label="Separator" level={getDot('separator', separator)} />}
             value={separator}
             onChange={onSeparatorChange}
           />
@@ -149,7 +169,7 @@ export default function DynamicFieldSettings({
 
           {hasDateStep && (
             <TextControl
-              label="Date format"
+              label={<ControlLabel label="Date format" level={getDot('dynamicDateFormat', dateFormat)} />}
               value={dateFormat}
               onChange={onDateFormatChange}
             />
@@ -158,19 +178,19 @@ export default function DynamicFieldSettings({
           {hasCommentsStep && (
             <>
               <TextControl
-                label="No comments text"
+                label={<ControlLabel label="No comments text" level={getDot('dynamicCommentsNoText', commentsNoText)} />}
                 value={commentsNoText}
                 onChange={onCommentsNoTextChange}
               />
 
               <TextControl
-                label="Single comment text"
+                label={<ControlLabel label="Single comment text" level={getDot('dynamicCommentsOneText', commentsOneText)} />}
                 value={commentsOneText}
                 onChange={onCommentsOneTextChange}
               />
 
               <TextControl
-                label="Plural comments text"
+                label={<ControlLabel label="Plural comments text" level={getDot('dynamicCommentsManyText', commentsManyText)} />}
                 value={commentsManyText}
                 onChange={onCommentsManyTextChange}
                 help="Use %s for the comments count placeholder."
@@ -179,7 +199,7 @@ export default function DynamicFieldSettings({
           )}
 
           <TextControl
-            label="Empty value text"
+            label={<ControlLabel label="Empty value text" level={getDot('emptyText', emptyText)} />}
             value={emptyText}
             onChange={onEmptyTextChange}
           />

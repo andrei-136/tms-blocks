@@ -6,7 +6,7 @@ import PanelTitle from './PanelTitle';
 import FlexItemControls from './FlexItemControls';
 import GridItemControls from './GridItemControls';
 import ControlLabel from './ControlLabel';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const FLEX_ITEM_PROPS = ['flexGrow', 'flexShrink', 'flexBasis'];
 const GRID_ITEM_PROPS = ['justifySelf', 'gridColumn', 'gridRow', 'gridArea'];
@@ -31,7 +31,11 @@ export default function ItemControls({
   updateCustomStyle,
   allowFlexItem = true,
   allowGridItem = true,
+  masterStyle = null,
 }) {
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
   const { isParentFlex, isParentGrid } = useSelect((select) => {
     if (!clientId) return { isParentFlex: false, isParentGrid: false };
 
@@ -58,9 +62,9 @@ export default function ItemControls({
     };
   }, [clientId]);
 
-  const hasFlexOverrides = hasModifiedStyleProps(customStyle, FLEX_ITEM_PROPS);
-  const hasGridOverrides = hasModifiedStyleProps(customStyle, GRID_ITEM_PROPS);
-  const hasSharedOverrides = hasModifiedStyleProps(customStyle, SHARED_ITEM_PROPS);
+  const hasFlexOverrides = FLEX_ITEM_PROPS.some((p) => getLevel(p) >= (masterStyle ? 3 : 1));
+  const hasGridOverrides = GRID_ITEM_PROPS.some((p) => getLevel(p) >= (masterStyle ? 3 : 1));
+  const hasSharedOverrides = SHARED_ITEM_PROPS.some((p) => getLevel(p) >= (masterStyle ? 3 : 1));
 
   const inferInitialMode = () => {
     if (allowFlexItem && !allowGridItem) return 'flex';
@@ -77,7 +81,7 @@ export default function ItemControls({
   const showGridSection = allowGridItem && itemMode === 'grid';
   const isModified = hasFlexOverrides || hasGridOverrides || hasSharedOverrides;
 
-  const setProps = ITEM_PANEL_STYLE_KEYS.filter((key) => isStylePropSet(customStyle, key));
+  const setProps = ITEM_PANEL_STYLE_KEYS.filter((key) => getLevel(key) >= 1);
   const hiddenSetProps = showFlexSection
     ? setProps.filter((key) => GRID_ITEM_PROPS.includes(key))
     : showGridSection
@@ -94,17 +98,13 @@ export default function ItemControls({
   }, [allowFlexItem, allowGridItem, itemMode]);
 
   const handleClearPanel = () => {
-    const clearMap = ITEM_PANEL_STYLE_KEYS.reduce((acc, key) => {
-      acc[key] = null;
-      return acc;
-    }, {});
-
-    updateCustomStyle(clearMap);
+    const resetValues = {};
+    setProps.forEach((key) => { resetValues[key] = resetToMaster(key); });
+    updateCustomStyle(resetValues);
   };
 
   return (
-    <PanelBody title={<PanelTitle title="Flex/Grid Item" isModified={isModified} />} initialOpen={false}>
-      {allowFlexItem && allowGridItem && (
+    <PanelBody title={<PanelTitle title="Flex/Grid Item" level={getModificationLevel(customStyle, ITEM_PANEL_STYLE_KEYS, masterStyle)} />} initialOpen={false}>
         <div style={{ marginBottom: '16px' }}>
           <label
             style={{
@@ -123,18 +123,17 @@ export default function ItemControls({
               onClick={() => setItemMode('flex')}
               style={{ flex: 1 }}
             >
-              <ControlLabel label="Flex Item" isSet={hasFlexOverrides || hasSharedOverrides} />
+              <ControlLabel label="Flex Item" level={hasFlexOverrides ? 3 : (hasSharedOverrides ? 1 : 0)} />
             </Button>
             <Button
               variant={itemMode === 'grid' ? 'primary' : 'secondary'}
               onClick={() => setItemMode('grid')}
               style={{ flex: 1 }}
             >
-              <ControlLabel label="Grid Item" isSet={hasGridOverrides || hasSharedOverrides} />
+              <ControlLabel label="Grid Item" level={hasGridOverrides ? 3 : (hasSharedOverrides ? 1 : 0)} />
             </Button>
           </ButtonGroup>
         </div>
-      )}
 
       {showFlexSection && (
         <FlexItemControls
@@ -143,6 +142,7 @@ export default function ItemControls({
           updateCustomStyle={updateCustomStyle}
           inline
           forceShow
+          masterStyle={masterStyle}
         />
       )}
 
@@ -153,6 +153,7 @@ export default function ItemControls({
           updateCustomStyle={updateCustomStyle}
           inline
           forceShow
+          masterStyle={masterStyle}
         />
       )}
       {isModified && (
@@ -186,7 +187,7 @@ export default function ItemControls({
                       width: '5px',
                       height: '5px',
                       borderRadius: '999px',
-                      backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+                      backgroundColor: MODIFICATION_LEVEL_COLORS[getLevel(key)] || MODIFICATION_LEVEL_COLORS[1],
                       flexShrink: 0,
                       display: 'inline-block',
                     }}
@@ -195,7 +196,7 @@ export default function ItemControls({
                   {modeLabel !== 'Shared' ? ` · ${modeLabel}` : ''}
                   {isHidden ? ' (hidden)' : ''}
                   <button
-                    onClick={() => updateCustomStyle(key, null)}
+                    onClick={() => updateCustomStyle(key, resetToMaster(key))}
                     style={{
                       background: 'none',
                       border: 'none',
@@ -205,7 +206,7 @@ export default function ItemControls({
                       color: '#757575',
                       fontSize: '12px',
                     }}
-                    aria-label={`Unset ${ITEM_PROP_LABELS[key] ?? key}`}
+                    aria-label={`${clearLabel} ${ITEM_PROP_LABELS[key] ?? key}`}
                   >
                     ×
                   </button>
@@ -221,7 +222,7 @@ export default function ItemControls({
             isDestructive
             onClick={handleClearPanel}
           >
-            Clear panel properties
+            {clearLabel} panel properties
           </Button>
         </div>
       )}

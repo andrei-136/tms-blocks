@@ -4,7 +4,7 @@ import { PanelBody, SelectControl, ToggleControl, Button, Flex, FlexItem } from 
 import UnitControls, { KEYWORDS_GLOBAL } from './UnitControls';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, MODIFICATION_LEVEL_COLORS } from '../style-utils';
 
 const GROUP_STYLE = {
   padding: '8px',
@@ -50,8 +50,8 @@ const PROP_LABELS = {
   boxSizing: 'Box Sizing',
 };
 
-function SpacingRow({ linked, onToggle, linkedLabel, prop, oppositeProp, customStyle, onChange, allowedUnits, keywords, unlinkedSides }) {
-  const isSet = isStylePropSet(customStyle, prop) || (oppositeProp && isStylePropSet(customStyle, oppositeProp));
+function SpacingRow({ linked, onToggle, linkedLabel, prop, oppositeProp, customStyle, getLevel, onChange, allowedUnits, keywords, unlinkedSides }) {
+  const isSet = getLevel(prop) >= 1 || (oppositeProp && getLevel(oppositeProp) >= 1);
 
   const normalizeValue = (val) => {
     if (!val) return null;
@@ -63,7 +63,7 @@ function SpacingRow({ linked, onToggle, linkedLabel, prop, oppositeProp, customS
     <div style={{ marginBottom: '8px' }}>
       <Flex align="center" justify="space-between" style={TOGGLE_STYLE}>
         <span style={{ fontSize: '11px', fontWeight: 500, textTransform: 'uppercase' }}>
-          <ControlLabel label={linkedLabel} isSet={isSet} />
+          <ControlLabel label={linkedLabel} level={isSet ? (getLevel(prop) >= 3 || (oppositeProp && getLevel(oppositeProp) >= 3) ? 3 : getLevel(prop)) : 0} />
         </span>
         <ToggleControl
           label=""
@@ -86,7 +86,7 @@ function SpacingRow({ linked, onToggle, linkedLabel, prop, oppositeProp, customS
         unlinkedSides.map(({ label, sideProp }) => (
           <UnitControls
             key={sideProp}
-            label={<ControlLabel label={label} isSet={isStylePropSet(customStyle, sideProp)} />}
+            label={<ControlLabel label={label} level={getLevel(sideProp)} />}
             value={normalizeValue(customStyle[sideProp])}
             onChange={(val) => onChange(val, sideProp)}
             allowedUnits={allowedUnits}
@@ -101,7 +101,8 @@ function SpacingRow({ linked, onToggle, linkedLabel, prop, oppositeProp, customS
 export default function SpacingControls({
   customStyle,
   updateCustomStyle,
-  allowedUnits = ['px', 'rem', 'em', '%', 'vw', 'vh', 'custom', 'size-presets']
+  allowedUnits = ['px', 'rem', 'em', '%', 'vw', 'vh', 'custom', 'size-presets'],
+  masterStyle = null
 }) {
   // Helper to compare spacing values
   const areValuesEqual = (val1, val2) => {
@@ -210,11 +211,17 @@ export default function SpacingControls({
     }
   };
 
-  const isModified = hasModifiedStyleProps(customStyle, SPACING_PROPS);
-  const setProps = SPACING_PROPS.filter((key) => isStylePropSet(customStyle, key));
+  const getLevel = (prop) => getModificationLevel(customStyle, [prop], masterStyle);
+  const spacingLevel = getModificationLevel(customStyle, SPACING_PROPS, masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
+  const overriddenProps = SPACING_PROPS.filter(
+    (p) => getLevel(p) >= (masterStyle ? 3 : 1)
+  );
+  const hasOverrides = overriddenProps.length > 0;
 
   return (
-    <PanelBody title={<PanelTitle title="Spacing" isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Spacing" level={spacingLevel} />} initialOpen={false}>
 
       {/* Padding */}
       <div style={{ ...GROUP_STYLE, background: 'hsl(251, 50%, 94%)' }}>
@@ -227,6 +234,7 @@ export default function SpacingControls({
           prop="paddingTop"
           oppositeProp="paddingBottom"
           customStyle={customStyle}
+          getLevel={getLevel}
           onChange={(val, sideProp = 'paddingTop') => handlePaddingChange(val, sideProp)}
           allowedUnits={paddingAllowedUnits}
           keywords={PADDING_KEYWORDS}
@@ -243,6 +251,7 @@ export default function SpacingControls({
           prop="paddingLeft"
           oppositeProp="paddingRight"
           customStyle={customStyle}
+          getLevel={getLevel}
           onChange={(val, sideProp = 'paddingLeft') => handlePaddingChange(val, sideProp)}
           allowedUnits={paddingAllowedUnits}
           keywords={PADDING_KEYWORDS}
@@ -264,6 +273,7 @@ export default function SpacingControls({
           prop="marginTop"
           oppositeProp="marginBottom"
           customStyle={customStyle}
+          getLevel={getLevel}
           onChange={(val, sideProp = 'marginTop') => handleMarginChange(val, sideProp)}
           allowedUnits={marginAllowedUnits}
           keywords={MARGIN_KEYWORDS}
@@ -280,6 +290,7 @@ export default function SpacingControls({
           prop="marginLeft"
           oppositeProp="marginRight"
           customStyle={customStyle}
+          getLevel={getLevel}
           onChange={(val, sideProp = 'marginLeft') => handleMarginChange(val, sideProp)}
           allowedUnits={marginAllowedUnits}
           keywords={MARGIN_KEYWORDS}
@@ -292,7 +303,7 @@ export default function SpacingControls({
 
       {/* Box Sizing */}
       <div style={{ marginBottom: '8px', marginTop: '4px' }}>
-        <ControlLabel label="Box Sizing" isSet={isStylePropSet(customStyle, 'boxSizing')} />
+        <ControlLabel label="Box Sizing" level={getLevel('boxSizing')} />
       </div>
       <SelectControl
         label="Box Sizing"
@@ -306,10 +317,10 @@ export default function SpacingControls({
         onChange={(val) => updateCustomStyle('boxSizing', val || null)}
       />
 
-      {isModified && (
+      {hasOverrides && (
         <div style={{ marginTop: '12px', borderTop: '1px solid #e0e0e0', paddingTop: '8px' }}>
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
-            {setProps.map((key) => (
+            {overriddenProps.map((key) => (
               <span
                 key={key}
                 style={{
@@ -328,14 +339,14 @@ export default function SpacingControls({
                     width: '5px',
                     height: '5px',
                     borderRadius: '999px',
-                    backgroundColor: 'var(--wp-admin-theme-color, #007cba)',
+                    backgroundColor: MODIFICATION_LEVEL_COLORS[getLevel(key)] || MODIFICATION_LEVEL_COLORS[1],
                     flexShrink: 0,
                     display: 'inline-block',
                   }}
                 />
                 {PROP_LABELS[key] ?? key}
                 <button
-                  onClick={() => updateCustomStyle(key, null)}
+                  onClick={() => updateCustomStyle(key, resetToMaster(key))}
                   style={{
                     background: 'none',
                     border: 'none',
@@ -345,7 +356,7 @@ export default function SpacingControls({
                     color: '#757575',
                     fontSize: '12px',
                   }}
-                  aria-label={`Unset ${PROP_LABELS[key] ?? key}`}
+                  aria-label={`${clearLabel} ${PROP_LABELS[key] ?? key}`}
                 >
                   ×
                 </button>
@@ -355,13 +366,13 @@ export default function SpacingControls({
           <Button
             variant="secondary"
             isDestructive
-            onClick={() => updateCustomStyle({
-              paddingTop: null, paddingRight: null, paddingBottom: null, paddingLeft: null,
-              marginTop: null, marginRight: null, marginBottom: null, marginLeft: null,
-              boxSizing: null,
-            })}
+            onClick={() => {
+              const resetValues = {};
+              overriddenProps.forEach((p) => { resetValues[p] = resetToMaster(p); });
+              updateCustomStyle(resetValues);
+            }}
           >
-            Clear panel properties
+            {clearLabel} panel properties
           </Button>
         </div>
       )}

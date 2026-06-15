@@ -16,7 +16,7 @@ import {
 import UnitControls from './UnitControls';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
-import { hasModifiedStyleProps, isStylePropSet } from '../style-utils';
+import { getModificationLevel, hasModifiedStyleProps, isStylePropSet } from '../style-utils';
 import ColorControls from './ColorControls';
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -152,30 +152,36 @@ const assembleTransform = ({ translateX, translateY, rotate, scaleX, scaleY, ske
 
 // --- Shadow 2x2 grid ---------------------------------------------------------
 
-function ShadowGrid({ offsetX, offsetY, blur, spread, onOffsetX, onOffsetY, onBlur, onSpread, showSpread = true }) {
+function ShadowGrid({ offsetX, offsetY, blur, spread, onOffsetX, onOffsetY, onBlur, onSpread, showSpread = true, masterStyle }) {
+  // masterStyle is the full parent master style (e.g. customStyle or responsiveStyle[key].base).
+  // Look up boxShadow sub-properties only when masterStyle itself is non-null,
+  // so a component instance without boxShadow on master still shows orange (override)
+  // rather than blue (standalone).
+  const hasMaster = !!masterStyle;
+  const m = hasMaster ? (masterStyle.boxShadow || {}) : {};
   return (
     <div style={GRID_2X2}>
       <UnitControls
-        label={<ControlLabel label="Offset X" isSet={!!offsetX?.value} />}
+        label={<ControlLabel label="Offset X" level={getModificationLevel({ offsetX }, ['offsetX'], hasMaster ? { offsetX: m.offsetX } : null)} />}
         value={offsetX}
         onChange={onOffsetX}
         allowedUnits={SHADOW_UNITS}
       />
       <UnitControls
-        label={<ControlLabel label="Offset Y" isSet={!!offsetY?.value} />}
+        label={<ControlLabel label="Offset Y" level={getModificationLevel({ offsetY }, ['offsetY'], hasMaster ? { offsetY: m.offsetY } : null)} />}
         value={offsetY}
         onChange={onOffsetY}
         allowedUnits={SHADOW_UNITS}
       />
       <UnitControls
-        label={<ControlLabel label="Blur" isSet={!!blur?.value} />}
+        label={<ControlLabel label="Blur" level={getModificationLevel({ blur }, ['blur'], hasMaster ? { blur: m.blur } : null)} />}
         value={blur}
         onChange={onBlur}
         allowedUnits={SHADOW_UNITS}
       />
       {showSpread && (
         <UnitControls
-          label={<ControlLabel label="Spread" isSet={!!spread?.value} />}
+          label={<ControlLabel label="Spread" level={getModificationLevel({ spread }, ['spread'], hasMaster ? { spread: m.spread } : null)} />}
           value={spread}
           onChange={onSpread}
           allowedUnits={SHADOW_UNITS}
@@ -187,7 +193,7 @@ function ShadowGrid({ offsetX, offsetY, blur, spread, onOffsetX, onOffsetY, onBl
 
 // --- Main component ----------------------------------------------------------
 
-export default function EffectsControls({ customStyle = {}, updateCustomStyle }) {
+export default function EffectsControls({ customStyle = {}, updateCustomStyle, masterStyle = null }) {
   const boxShadow = customStyle.boxShadow || {};
   const filter = customStyle.filter || {};
   const transform = customStyle.transform || {};
@@ -219,9 +225,18 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
     setCustomOpacity(hasOpacityValue);
   }, [hasOpacityValue]);
 
-  const isModified = hasModifiedStyleProps(customStyle, [
-    'boxShadow', 'filter', 'transform', 'backdropFilter', 'mixBlendMode', 'opacity',
-  ]);
+  const EFFECTS_PROPS = ['boxShadow', 'filter', 'transform', 'backdropFilter', 'mixBlendMode', 'opacity'];
+  const effectsLevel = getModificationLevel(customStyle, EFFECTS_PROPS, masterStyle);
+  const clearLabel = masterStyle ? 'Reset' : 'Clear';
+  const resetToMaster = (prop) => masterStyle ? (masterStyle[prop] ?? null) : null;
+
+  // Helper: compare a sub-property against the master's matching sub-property
+  const subLevel = (instanceVal, propName, getMasterVal) =>
+    getModificationLevel(
+      { [propName]: instanceVal },
+      [propName],
+      masterStyle ? { [propName]: getMasterVal(masterStyle) } : null
+    );
 
   const getOpacityValue = () => {
     if (!hasOpacityValue) return 1;
@@ -284,12 +299,12 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
   // --- Render ----------------------------------------------------------------
 
   return (
-    <PanelBody title={<PanelTitle title="Effects" isModified={isModified} />} initialOpen={false}>
+    <PanelBody title={<PanelTitle title="Effects" level={effectsLevel} />} initialOpen={false}>
 
       {/* Box Shadow */}
       <div style={GROUP_STYLE}>
         <Flex align="center" justify="space-between">
-          <ControlLabel label="Box Shadow" isSet={isStylePropSet(customStyle, 'boxShadow')} />
+          <ControlLabel label="Box Shadow" level={getModificationLevel(customStyle, ['boxShadow'], masterStyle)} />
           {(boxShadow.offsetX?.value || boxShadow.offsetY?.value || boxShadow.blur?.value || boxShadow.spread?.value) && (
             <Button isSmall isDestructive variant="tertiary" onClick={() => updateCustomStyle('boxShadow', null)}>
               Clear
@@ -303,6 +318,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
           onOffsetY={(val) => updateBoxShadow({ offsetY: val })}
           onBlur={(val) => updateBoxShadow({ blur: val })}
           onSpread={(val) => updateBoxShadow({ spread: val })}
+          masterStyle={masterStyle}
         />
         <div style={{ marginTop: '8px' }}>
           <ColorControls
@@ -316,7 +332,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
         </div>
         <div style={{ marginTop: '4px' }}>
           <ToggleControl
-            label={<ControlLabel label="Inset" isSet={!!boxShadow.inset} />}
+            label={<ControlLabel label="Inset" level={subLevel(boxShadow.inset, 'inset', (m) => m.boxShadow?.inset)} />}
             checked={boxShadow.inset || false}
             onChange={(val) => updateBoxShadow({ inset: val || null })}
             __nextHasNoMarginBottom
@@ -331,7 +347,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
         {/* Drop Shadow */}
         <div style={FILTER_SUBSECTION_STYLE}>
           <Flex align="center" justify="space-between">
-            <ControlLabel label="Drop Shadow" isSet={hasDropShadowValue} />
+            <ControlLabel label="Drop Shadow" level={subLevel(filter.dropShadow || {}, 'dropShadow', (m) => m.filter?.dropShadow)} />
             {hasDropShadowValue && (
               <Button isSmall isDestructive variant="tertiary" onClick={() => {
                 const css = assembleFilter({ blur: filterBlur });
@@ -345,26 +361,26 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
           {/* 2x2 grid + color as 4th cell */}
           <div style={GRID_2X2}>
             <UnitControls
-              label={<ControlLabel label="Offset X" isSet={!!filter.dropShadow?.offsetX?.value} />}
+              label={<ControlLabel label="Offset X" level={subLevel(filter.dropShadow?.offsetX, 'offsetX', (m) => m.filter?.dropShadow?.offsetX)} />}
               value={filter.dropShadow?.offsetX}
               onChange={(val) => updateDropShadow({ offsetX: val })}
               allowedUnits={SHADOW_UNITS}
             />
             <UnitControls
-              label={<ControlLabel label="Offset Y" isSet={!!filter.dropShadow?.offsetY?.value} />}
+              label={<ControlLabel label="Offset Y" level={subLevel(filter.dropShadow?.offsetY, 'offsetY', (m) => m.filter?.dropShadow?.offsetY)} />}
               value={filter.dropShadow?.offsetY}
               onChange={(val) => updateDropShadow({ offsetY: val })}
               allowedUnits={SHADOW_UNITS}
             />
             <UnitControls
-              label={<ControlLabel label="Blur" isSet={!!filter.dropShadow?.blur?.value} />}
+              label={<ControlLabel label="Blur" level={subLevel(filter.dropShadow?.blur, 'blur', (m) => m.filter?.dropShadow?.blur)} />}
               value={filter.dropShadow?.blur}
               onChange={(val) => updateDropShadow({ blur: val })}
               allowedUnits={SHADOW_UNITS}
             />
             <div style={{display: 'flex', flexDirection: 'column', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
               <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#1e1e1e', marginBottom: '2px' }}>
-                <ControlLabel label="Color" isSet={!!filter.dropShadow?.color} />
+                <ControlLabel label="Color" level={subLevel(filter.dropShadow?.color, 'color', (m) => m.filter?.dropShadow?.color)} />
               </div>
               <ColorControls
                 customStyle={{ dropShadowColor: filter.dropShadow?.color }}
@@ -384,7 +400,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
         {/* Filter Blur */}
         <div style={FILTER_SUBSECTION_STYLE}>
           <Flex align="center" justify="space-between">
-            <ControlLabel label="Blur" isSet={!!filterBlur?.value} />
+            <ControlLabel label="Blur" level={subLevel(filterBlur, 'blur', (m) => m.filter?.blur)} />
             {filterBlur?.value && (
               <Button isSmall isDestructive variant="tertiary" onClick={() => {
                 const css = assembleFilter({ dropShadow: filter.dropShadow });
@@ -408,7 +424,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
       {/* Transform group */}
       <div style={{ ...GROUP_STYLE, background: 'hsl(251, 50%, 90%)' }}>
         <Flex align="center" justify="space-between">
-          <label style={SECTION_LABEL_STYLE}>Transform</label>
+          <ControlLabel label="Transform" level={subLevel(transform, 'transform', (m) => m.transform)} />
           {hasTransformValue && (
             <Button isSmall isDestructive variant="tertiary" onClick={() => updateCustomStyle('transform', null)}>
               Clear
@@ -419,25 +435,25 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
         <div style={FILTER_SUBSECTION_STYLE}>
           <div style={GRID_2X2}>
             <UnitControls
-              label={<ControlLabel label="Translate X" isSet={hasConfigValue(transform.translateX)} />}
+              label={<ControlLabel label="Translate X" level={subLevel(transform.translateX, 'translateX', (m) => m.transform?.translateX)} />}
               value={transform.translateX}
               onChange={(val) => updateTransform({ translateX: val })}
               allowedUnits={TRANSFORM_LENGTH_UNITS}
             />
             <UnitControls
-              label={<ControlLabel label="Translate Y" isSet={hasConfigValue(transform.translateY)} />}
+              label={<ControlLabel label="Translate Y" level={subLevel(transform.translateY, 'translateY', (m) => m.transform?.translateY)} />}
               value={transform.translateY}
               onChange={(val) => updateTransform({ translateY: val })}
               allowedUnits={TRANSFORM_LENGTH_UNITS}
             />
             <UnitControls
-              label={<ControlLabel label="Rotate" isSet={hasConfigValue(transform.rotate)} />}
+              label={<ControlLabel label="Rotate" level={subLevel(transform.rotate, 'rotate', (m) => m.transform?.rotate)} />}
               value={transform.rotate}
               onChange={(val) => updateTransform({ rotate: val })}
               allowedUnits={TRANSFORM_ANGLE_UNITS}
             />
             <UnitControls
-              label={<ControlLabel label="Scale X" isSet={hasConfigValue(transform.scaleX)} />}
+              label={<ControlLabel label="Scale X" level={subLevel(transform.scaleX, 'scaleX', (m) => m.transform?.scaleX)} />}
               value={transform.scaleX}
               onChange={(val) => updateTransform({ scaleX: val })}
               allowedUnits={TRANSFORM_SCALE_UNITS}
@@ -446,19 +462,19 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
 
           <div style={GRID_2X2}>
             <UnitControls
-              label={<ControlLabel label="Scale Y" isSet={hasConfigValue(transform.scaleY)} />}
+              label={<ControlLabel label="Scale Y" level={subLevel(transform.scaleY, 'scaleY', (m) => m.transform?.scaleY)} />}
               value={transform.scaleY}
               onChange={(val) => updateTransform({ scaleY: val })}
               allowedUnits={TRANSFORM_SCALE_UNITS}
             />
             <UnitControls
-              label={<ControlLabel label="Skew X" isSet={hasConfigValue(transform.skewX)} />}
+              label={<ControlLabel label="Skew X" level={subLevel(transform.skewX, 'skewX', (m) => m.transform?.skewX)} />}
               value={transform.skewX}
               onChange={(val) => updateTransform({ skewX: val })}
               allowedUnits={TRANSFORM_ANGLE_UNITS}
             />
             <UnitControls
-              label={<ControlLabel label="Skew Y" isSet={hasConfigValue(transform.skewY)} />}
+              label={<ControlLabel label="Skew Y" level={subLevel(transform.skewY, 'skewY', (m) => m.transform?.skewY)} />}
               value={transform.skewY}
               onChange={(val) => updateTransform({ skewY: val })}
               allowedUnits={TRANSFORM_ANGLE_UNITS}
@@ -473,7 +489,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
 
         <div style={FILTER_SUBSECTION_STYLE}>
           <Flex align="center" justify="space-between">
-            <ControlLabel label="Blur" isSet={!!backdropBlur?.value} />
+            <ControlLabel label="Blur" level={subLevel(backdropBlur, 'blur', (m) => m.backdropFilter?.blur)} />
             {backdropBlur?.value && (
               <Button isSmall isDestructive variant="tertiary" onClick={() => updateCustomStyle('backdropFilter', null)}>
                 Clear
@@ -493,7 +509,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
 
       {/* Mix Blend Mode */}
       <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Mix Blend Mode" isSet={isStylePropSet(customStyle, 'mixBlendMode')} />
+        <ControlLabel label="Mix Blend Mode" level={getModificationLevel(customStyle, ['mixBlendMode'], masterStyle)} />
       </div>
       <SelectControl
         label="Mix Blend Mode"
@@ -508,7 +524,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
 
       {/* Opacity */}
       <ToggleControl
-        label={<ControlLabel label="Custom Opacity" isSet={isStylePropSet(customStyle, 'opacity')} />}
+        label={<ControlLabel label="Custom Opacity" level={getModificationLevel(customStyle, ['opacity'], masterStyle)} />}
         checked={customOpacity}
         onChange={(enabled) => {
           setCustomOpacity(enabled);
@@ -518,7 +534,7 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
       />
       {customOpacity && (
         <RangeControl
-          label={<ControlLabel label="Opacity" isSet={isStylePropSet(customStyle, 'opacity')} />}
+          label={<ControlLabel label="Opacity" level={getModificationLevel(customStyle, ['opacity'], masterStyle)} />}
           value={getOpacityValue()}
           onChange={(val) => updateCustomStyle('opacity', val, 'unitless')}
           min={0}
@@ -528,24 +544,19 @@ export default function EffectsControls({ customStyle = {}, updateCustomStyle })
         />
       )}
 
-      {isModified && (
+      {effectsLevel > 0 && (
         <Button
           variant="secondary"
           isDestructive
           onClick={() => {
             setCustomOpacity(false);
-            updateCustomStyle({
-              boxShadow: null,
-              filter: null,
-              transform: null,
-              backdropFilter: null,
-              mixBlendMode: null,
-              opacity: null,
-            });
+            const resetValues = {};
+            EFFECTS_PROPS.forEach((p) => { resetValues[p] = resetToMaster(p); });
+            updateCustomStyle(resetValues);
           }}
           style={{ marginTop: '8px' }}
         >
-          Clear panel properties
+          {`${clearLabel} panel properties`}
         </Button>
       )}
     </PanelBody>

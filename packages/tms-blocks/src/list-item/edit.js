@@ -144,7 +144,7 @@ function EditCanvas({ attributes, setAttributes, clientId }) {
 
 // -- EditSelected -------------------------------------------------------------
 
-function EditSelected({ attributes, setAttributes, clientId }) {
+function EditSelected({ attributes, setAttributes, clientId, masterAttributes }) {
   const {
     content              = '',
     uniqueId,
@@ -334,6 +334,7 @@ function EditSelected({ attributes, setAttributes, clientId }) {
                           include={['List']}
                           exclude={['Transition']}
                           controlProps={stateTab.name !== 'base' ? { Display: { useUtilityClasses: false } } : {}}
+                          masterAttributes={masterAttributes}
                         />
                       );
                     }}
