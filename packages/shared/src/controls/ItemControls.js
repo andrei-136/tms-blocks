@@ -123,14 +123,14 @@ export default function ItemControls({
               onClick={() => setItemMode('flex')}
               style={{ flex: 1 }}
             >
-              <ControlLabel label="Flex Item" level={hasFlexOverrides ? 3 : (hasSharedOverrides ? 1 : 0)} />
+              <ControlLabel label="Flex Item" level={hasFlexOverrides ? (masterStyle ? 3 : 1) : (hasSharedOverrides ? (masterStyle ? 3 : 1) : 0)} />
             </Button>
             <Button
               variant={itemMode === 'grid' ? 'primary' : 'secondary'}
               onClick={() => setItemMode('grid')}
               style={{ flex: 1 }}
             >
-              <ControlLabel label="Grid Item" level={hasGridOverrides ? 3 : (hasSharedOverrides ? 1 : 0)} />
+              <ControlLabel label="Grid Item" level={hasGridOverrides ? (masterStyle ? 3 : 1) : (hasSharedOverrides ? (masterStyle ? 3 : 1) : 0)} />
             </Button>
           </ButtonGroup>
         </div>

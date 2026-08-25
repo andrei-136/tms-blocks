@@ -71,6 +71,10 @@
       "type": "array",
       "default": []
     },
+    "customSelectors": {
+      "type": "object",
+      "default": {}
+    },
     "path": {
       "type": "string",
       "default": ""

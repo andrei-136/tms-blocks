@@ -2,13 +2,32 @@ import React from 'react';
 import { ToggleControl, RangeControl, SelectControl, TextControl } from '@wordpress/components';
 import ControlLabel from './ControlLabel';
 
-export default function TruncateControls({ attributes, setAttributes, preview }) {
+const DEFAULT_LENGTH = 200;
+const DEFAULT_UNIT   = 'characters';
+const DEFAULT_SUFFIX = '...';
+
+export default function TruncateControls({ attributes, setAttributes, preview, masterAttributes = null }) {
     const {
         truncateEnabled = false,
-        truncateLength  = 200,
-        truncateUnit    = 'characters',
-        truncateSuffix  = '...',
+        truncateLength  = DEFAULT_LENGTH,
+        truncateUnit    = DEFAULT_UNIT,
+        truncateSuffix  = DEFAULT_SUFFIX,
     } = attributes;
+
+    const masterLength = masterAttributes?.truncateLength ?? DEFAULT_LENGTH;
+    const masterUnit   = masterAttributes?.truncateUnit   ?? DEFAULT_UNIT;
+    const masterSuffix = masterAttributes?.truncateSuffix ?? DEFAULT_SUFFIX;
+
+    // Wrapper-property dot convention: no blue on standalone; purple when the
+    // instance matches the master, orange when overridden, none when both default.
+    const truncateLevel = (inst, def, master) =>
+        masterAttributes
+            ? (inst === def && master === def ? 0 : (inst === master ? 2 : 3))
+            : 0;
+
+    const unitLevel   = truncateLevel(truncateUnit,   DEFAULT_UNIT,   masterUnit);
+    const lengthLevel = truncateLevel(truncateLength, DEFAULT_LENGTH, masterLength);
+    const suffixLevel = truncateLevel(truncateSuffix, DEFAULT_SUFFIX, masterSuffix);
 
     return (
         <>
@@ -20,7 +39,7 @@ export default function TruncateControls({ attributes, setAttributes, preview })
             {truncateEnabled && (
                 <>
                     <SelectControl
-                        label="Unit"
+                        label={<ControlLabel label="Unit" level={unitLevel} />}
                         value={truncateUnit}
                         options={[
                             { label: 'Characters', value: 'characters' },
@@ -29,7 +48,7 @@ export default function TruncateControls({ attributes, setAttributes, preview })
                         onChange={(v) => setAttributes({ truncateUnit: v })}
                     />
                     <RangeControl
-                        label="Length"
+                        label={<ControlLabel label="Length" level={lengthLevel} />}
                         value={truncateLength}
                         onChange={(v) => setAttributes({ truncateLength: v })}
                         min={10}
@@ -37,7 +56,7 @@ export default function TruncateControls({ attributes, setAttributes, preview })
                         step={truncateUnit === 'words' ? 1 : 10}
                     />
                     <TextControl
-                        label="Suffix"
+                        label={<ControlLabel label="Suffix" level={suffixLevel} />}
                         value={truncateSuffix}
                         onChange={(v) => setAttributes({ truncateSuffix: v })}
                         placeholder="..."

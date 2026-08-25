@@ -31,6 +31,8 @@
     "innerTextDynamicCommentsOneText": { "type": "string", "default": "" },
     "innerTextDynamicCommentsManyText": { "type": "string", "default": "" },
     "href":        { "type": "string", "default": "" },
+    "linkSource":  { "type": "string", "default": "url" },
+    "linkId":      { "type": "number", "default": 0 },
     "isDynamic":   { "type": "boolean", "default": false },
     "dynamicSteps": { "type": "array", "default": [] },
     "dynamicPath": { "type": "string", "default": "" },
@@ -52,6 +54,7 @@
     "customBreakpoints": {"type": "array", "default": [] },
     "customStyleHover":        { "type": "object", "default": {} },
     "customStyleFocusVisible": { "type": "object", "default": {} },
+    "customSelectors":         { "type": "object",  "default": {} },
     "renderBlock": { "type": "boolean", "default": true },
     "transitionConfig": {
       "type": "object",

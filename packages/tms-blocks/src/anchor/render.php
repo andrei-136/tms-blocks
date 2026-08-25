@@ -37,6 +37,8 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
     $href_raw     = isset( $attributes['href'] )        ? trim( $attributes['href'] )        : '';
     $dynamic_path = isset( $attributes['dynamicPath'] ) ? trim( $attributes['dynamicPath'] ) : '';
     $is_dynamic   = ! empty( $attributes['isDynamic'] );
+    $link_source  = isset( $attributes['linkSource'] )  ? $attributes['linkSource']           : '';
+    $link_id      = isset( $attributes['linkId'] )      ? (int) $attributes['linkId']          : 0;
 
     $inner_text                = isset( $attributes['innerText'] ) ? trim( $attributes['innerText'] ) : '';
     $inner_text_dynamic_path   = isset( $attributes['innerTextDynamicPath'] ) ? trim( $attributes['innerTextDynamicPath'] ) : '';
@@ -108,6 +110,9 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
 
         $href = $resolved !== '' ? esc_url( $resolved ) : '#';
 
+    } elseif ( 'post' === $link_source && $link_id > 0 ) {
+        $resolved = get_permalink( $link_id );
+        $href = $resolved ? esc_url( $resolved ) : '#';
     } elseif ( $href_raw !== '' ) {
         // Replace template variables.
         $href_raw = str_replace(
@@ -272,7 +277,15 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
     if ( $all_css ) {
         tmsblocks_add_inline_style_once( $handle, $all_css );
     }
-
+    $custom_selectors_css = tmsblocks_process_custom_selectors(
+        $attributes['customSelectors'] ?? [],
+        $unique_class_name,
+        $attributes['breakpointOverrides'] ?? [],
+        $attributes['customBreakpoints'] ?? []
+    );
+    if ( $custom_selectors_css ) {
+        tmsblocks_add_inline_style_once( $handle, $custom_selectors_css );
+    }
     // -- Content --------------------------------------------------------------
 
     $inner_blocks_content = '';

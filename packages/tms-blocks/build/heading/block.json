@@ -75,6 +75,10 @@
       "type": "array",
       "default": []
     },
+    "customSelectors": {
+      "type": "object",
+      "default": {}
+    },
     "tmsClassName": {
       "type": "string",
       "default": ""

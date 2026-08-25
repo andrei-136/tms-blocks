@@ -8,7 +8,6 @@ import {
   useStyleOverride,
   store as blockEditorStore,
 } from '@wordpress/block-editor';
-import { createBlock } from '@wordpress/blocks';
 import {
   Button,
   Modal,
@@ -19,11 +18,11 @@ import {
   ToolbarGroup,
 } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
-import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps } from '../../../shared/src/style-utils';
-import { useCustomStyle, useUniqueId, useDynamicField, useBreakpointStyles } from '../../../shared/src/hooks';
+import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps, computeNextStyle, getCustomSelectorsLevel } from '../../../shared/src/style-utils';
+import { useCustomStyle, useUniqueId, useDynamicField, useBreakpointStyles, useCustomSelectorsStyle } from '../../../shared/src/hooks';
 import {
   StyleControls, IdentityControls,
-  AriaControls, BreakpointSelector, CustomAttributesControls, ControlLabel, TagControls, TruncateControls,
+  AriaControls, BreakpointSelector, CustomAttributesControls, CustomSelectorsControls, ControlLabel, TagControls, TruncateControls, TransitionControls, ContentControls,
 } from '../../../shared/src/controls';
 import PanelTitle from '../../../shared/src/controls/PanelTitle';
 import DynamicFieldSettings from '../../../shared/src/controls/DynamicFieldSettings';
@@ -168,6 +167,7 @@ function BreakpointStateTabs({
     { name: 'base',          title: <ControlLabel label="Base"          isSet={isBaseModified}  /> },
     { name: 'hover',         title: <ControlLabel label="Hover"         isSet={isHoverModified} /> },
     { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" isSet={isFocusModified} /> },
+    { name: 'custom-css',    title: <ControlLabel label="CSS+" level={getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, activeBreakpoint)} /> },
   ];
 
   return (
@@ -205,6 +205,47 @@ function BreakpointStateTabs({
               controlProps={{ Display: { useUtilityClasses: false } }}
               masterStyle={masterFocusStyle}
               masterAttributes={masterAttributes}
+            />
+          );
+        }
+
+        if (tab.name === 'custom-css') {
+          return (
+            <CustomSelectorsControls
+              customSelectors={attributes.customSelectors || {}}
+              onChange={(next) => setAttributes({ customSelectors: next })}
+              blockClassName={attributes.uniqueId ? `.tmsblocks-paragraph-${attributes.uniqueId}` : ''}
+              activeBreakpoint={activeBreakpoint}
+              masterAttributes={masterAttributes}
+              renderStyleControls={(entry, onUpdateEntry, _onRemove, activeIndex, masterEntry) => {
+                const isPseudo = /^&:{1,2}(before|after)$/.test(entry.selector?.trim());
+                return (
+                <React.Fragment key={activeIndex}>
+                {isPseudo && (
+                <ContentControls
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                )}
+                <TransitionControls
+                  target="selector"
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                <StyleControls
+                  updateCustomStyle={(prop, value, unit) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value, unit) })}
+                  attributes={{ ...attributes, customStyle: entry.customStyle || {} }}
+                  setAttributes={(patch) => {
+                    if (patch.customStyle !== undefined) onUpdateEntry({ customStyle: patch.customStyle });
+                    else setAttributes(patch);
+                  }}
+                  clientId={clientId}
+                  include={['List']}
+                  exclude={['Transition']}
+                  masterStyle={masterAttributes ? (masterEntry?.customStyle || {}) : null}
+                />
+                </React.Fragment>
+              );}}
             />
           );
         }
@@ -256,6 +297,8 @@ function EditCanvas({ attributes, setAttributes, clientId, onReplace, mergeBlock
   const uniqueClassName   = useParagraphStyle({ uniqueId, clientId, customStyle, responsiveStyle, breakpointOverrides, customBreakpoints });
   const combinedClassName = [tmsClassName, uniqueClassName].filter(Boolean).join(' ').trim();
 
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-paragraph', customSelectors: attributes.customSelectors || {}, breakpointOverrides: attributes.breakpointOverrides || {}, customBreakpoints: attributes.customBreakpoints || [] });
+
   const blockProps = useBlockProps({
     id:           anchorId || undefined,
     className:    combinedClassName || undefined,
@@ -288,7 +331,7 @@ function EditCanvas({ attributes, setAttributes, clientId, onReplace, mergeBlock
 
   return (
     <RichText
-      allowedFormats={['core/bold', 'core/italic', 'core/strikethrough', 'core/code', 'core/subscript', 'core/superscript', 'core/text-color']}
+      allowedFormats={['core/bold', 'core/italic', 'core/link', 'core/strikethrough', 'core/code', 'core/subscript', 'core/superscript', 'core/text-color']}
       {...blockProps}
       identifier="content"
       tagName={textTag}
@@ -297,7 +340,6 @@ function EditCanvas({ attributes, setAttributes, clientId, onReplace, mergeBlock
       placeholder="Write paragraph..."
       keepPlaceholderOnFocus
       onMerge={mergeBlocks}
-      onSplit={(value) => createBlock('tmsblocks/paragraph', { ...attributes, uniqueId: undefined, content: value })}
       onReplace={onReplace}
     />
   );
@@ -424,11 +466,45 @@ function EditSelected({
 
   const stylesTabLevel = Math.max(desktopLevel, responsiveMaxLevel);
 
+  // Dynamic-content toggle dot. Mirrors the wrapper-property convention
+  // (see WrapperControls / IdentityControls): NO dot on standalone blocks —
+  // wrapper properties have no standalone default indicator, unlike CSS
+  // properties. On an instance: purple when set + matches master, orange
+  // when overridden; both at the default (off) shows no dot.
+  const dynamicLevel = masterAttributes
+    ? (isDynamic === false && !(masterAttributes.isDynamic || false)
+        ? 0
+        : (isDynamic === (masterAttributes.isDynamic || false) ? 2 : 3))
+    : 0;
+
+  // Wrapper tab dot: aggregate override level across all wrapper attributes
+  const wrapperTabLevel = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const attrNames = ['tagName', 'anchorId', 'tmsClassName', 'ariaLabel', 'ariaRole'];
+    let maxLevel = 0;
+    for (const key of attrNames) {
+      const def = key === 'tagName' ? 'p' : '';
+      const inst = attributes[key] || def;
+      const master = masterAttributes[key] || def;
+      if (inst === def && master === def) continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    for (const key of ['customAttributes', 'extraAriaAttributes']) {
+      const inst = JSON.stringify(attributes[key] || []);
+      const master = JSON.stringify(masterAttributes[key] || []);
+      if (inst === '[]' && master === '[]') continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    return maxLevel;
+  }, [masterAttributes, attributes]);
+
 
   // -- Canvas styles ----------------------------------------------------------
 
   const uniqueClassName   = useParagraphStyle({ uniqueId, clientId, customStyle, responsiveStyle, breakpointOverrides, customBreakpoints });
   const combinedClassName = [tmsClassName, uniqueClassName].filter(Boolean).join(' ').trim();
+
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-paragraph', customSelectors: attributes.customSelectors || {}, breakpointOverrides: attributes.breakpointOverrides || {}, customBreakpoints: attributes.customBreakpoints || [] });
 
   const blockProps = useBlockProps({
     id:           anchorId || undefined,
@@ -479,7 +555,7 @@ function EditSelected({
           <TabPanel
             className="tmsblocks-paragraph-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
-              { name: 'wrapper', title: 'Wrapper' },
+              { name: 'wrapper', title: <ControlLabel label="Wrapper" level={wrapperTabLevel} /> },
               { name: 'styles',  title: <ControlLabel label="Styles"  level={stylesTabLevel} /> },
             ]}
           >
@@ -491,7 +567,7 @@ function EditSelected({
                   <div style={{ backgroundColor: 'var(--tms-cold-white)', padding: '16px' }}>
                     <div style={{ borderBottom: '1px solid #eee', paddingBottom: '16px', marginBottom: '16px' }}>
                       <ToggleControl
-                        label="Use dynamic content"
+                        label={<ControlLabel label="Use dynamic content" level={dynamicLevel} />}
                         checked={isDynamic}
                         onChange={(next) => {
                           if (next) {
@@ -544,15 +620,16 @@ function EditSelected({
                       )}
                     </div>
 
-                    <TagControls attributes={attributes} setAttributes={setAttributes} tagNameOptions={PARAGRAPH_TAG_OPTIONS} />
+                    <TagControls attributes={attributes} setAttributes={setAttributes} tagNameOptions={PARAGRAPH_TAG_OPTIONS} masterAttributes={masterAttributes} />
                     <TruncateControls
                       attributes={attributes}
                       setAttributes={setAttributes}
                       preview={isDynamic ? previewDisplayHtml : truncatedDisplayContent}
+                      masterAttributes={masterAttributes}
                     />
-                    <AriaControls attributes={attributes} setAttributes={setAttributes} />
-                    <CustomAttributesControls attributes={attributes} setAttributes={setAttributes} />
-                    <IdentityControls attributes={attributes} setAttributes={setAttributes} />
+                    <AriaControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
+                    <CustomAttributesControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
+                    <IdentityControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
                   </div>
                 );
               }
@@ -564,14 +641,15 @@ function EditSelected({
                     allBreakpoints={allBreakpoints}
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
-                    isDesktopModified={isBaseModified}
-                    desktopLevel={desktopLevel}
+                    isDesktopModified={isBaseModified || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
+                    desktopLevel={Math.max(desktopLevel, getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop'))}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
-                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
+                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                      getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                     }
-                    getBreakpointLevel={getBreakpointLevel}
+                    getBreakpointLevel={(key) => Math.max(getBreakpointLevel(key), getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key))}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />
@@ -612,7 +690,7 @@ function EditSelected({
       ) : (
         <>
           <RichText
-            allowedFormats={['core/bold', 'core/italic', 'core/strikethrough', 'core/code', 'core/subscript', 'core/superscript', 'core/text-color']}
+            allowedFormats={['core/bold', 'core/italic', 'core/link', 'core/strikethrough', 'core/code', 'core/subscript', 'core/superscript', 'core/text-color']}
             {...blockProps}
             identifier="content"
             tagName={tagName === 'figcaption' ? 'figcaption' : 'p'}
@@ -621,7 +699,6 @@ function EditSelected({
             placeholder="Write paragraph..."
             keepPlaceholderOnFocus
             onMerge={mergeBlocks}
-            onSplit={(value) => createBlock('tmsblocks/paragraph', { ...attributes, uniqueId: undefined, content: value })}
             onReplace={onReplace}
           />
         </>

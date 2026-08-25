@@ -9,6 +9,8 @@ export { default as ClassNameControl } from './ClassNameControl';
 export { default as ColorControls } from './ColorControls';
 export { default as ControlLabel } from './ControlLabel';
 export { default as CustomAttributesControls } from './CustomAttributesControls';
+export { default as CustomSelectorsControls } from './CustomSelectorsControls';
+export { default as ContentControls } from './ContentControls';
 export { default as CustomStyleInspector } from './CustomStyleInspector';
 export { default as DimensionControls } from './DimensionControls';
 export { default as DisplayControls } from './DisplayControls';

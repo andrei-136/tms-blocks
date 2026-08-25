@@ -59,6 +59,7 @@
     "itemResponsiveStyle": { "type": "object", "default": {} },
     "breakpointOverrides": { "type": "object", "default": {} },
     "customBreakpoints":   { "type": "array",  "default": [] },
+    "customSelectors":     { "type": "object",  "default": {} },
     "path": {
       "type": "string",
       "default": ""

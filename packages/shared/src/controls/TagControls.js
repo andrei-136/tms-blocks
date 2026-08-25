@@ -21,17 +21,18 @@ export default function TagControls({
   attributes,
   setAttributes,
   masterAttributes = null,
+  masterAttributeKey = 'tagName',
 }) {
-  const resolvedTagName = tagName ?? attributes?.tagName;
+  const resolvedTagName = tagName ?? attributes?.[masterAttributeKey];
   const resolvedSetTagName = setTagName
     || ((value) => {
       if (setAttributes) {
-        setAttributes({ tagName: value });
+        setAttributes({ [masterAttributeKey]: value });
       }
     });
   const defaultTagName = tagNameOptions[0]?.value || 'div';
   const currentTag = resolvedTagName || defaultTagName;
-  const masterTag = masterAttributes?.tagName || defaultTagName;
+  const masterTag = masterAttributes?.[masterAttributeKey] || defaultTagName;
   const isTagDefault = currentTag === defaultTagName && masterTag === defaultTagName;
   const tagLevel = masterAttributes ? (isTagDefault ? 0 : (currentTag === masterTag ? 2 : 3)) : 0;
 

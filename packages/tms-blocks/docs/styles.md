@@ -51,3 +51,47 @@ When you have hover or focus-visible styles set, you'll also see the **Transitio
 - **Delay** — how long to wait before the transition starts
 
 You can set a single global transition for all properties, or expand to control each CSS property individually.
+
+## CSS+ tab — custom CSS selectors
+
+The **CSS+** tab lets you write custom CSS selectors that target the block, with full style control for each selector. Use `&` as a placeholder for the block's own CSS class.
+
+### Adding a selector
+
+Click **+ Add selector**, then type a selector in the field. The `&` is optional — if you leave it out, it is added automatically.
+
+| You type | Resolves to |
+|---|---|
+| `:hover` | `&:hover` |
+| `::before` | `&::before` |
+| `ul li` | `& ul li` (targets nested list items inside this block) |
+| `&[open]` | `&[open]` (targets the block when it has an `open` attribute) |
+
+Selectors are always scoped to the block — you cannot write selectors that target other elements on the page.
+
+### Styling a selector
+
+Click the radio button next to a selector to select it. The full set of style panels (Typography, Colors, Border, Effects, Position, etc.) appears below. These work exactly like the Base/Hover/Focus-Visible state tabs — the only difference is these styles are output under your custom selector instead of a built-in pseudo-class.
+
+### Pseudo-elements (`::before`, `::after`)
+
+When you create a `&::before` or `&::after` selector, a **Content** panel appears above the other style panels. This sets the CSS `content` property — which is required for a pseudo-element to render.
+
+You can type bare text (it is automatically quoted) or enter CSS functions directly:
+
+| You type | CSS output |
+|---|---|
+| `→` | `content: "→"` |
+| `url("icon.svg")` | `content: url("icon.svg")` |
+| `attr(data-label)` | `content: attr(data-label)` |
+| `""` | `content: ""` (empty, for decorative shapes) |
+
+If the Content field is left empty, it defaults to `content: ""` so the pseudo-element still renders.
+
+### Transition in custom selectors
+
+Each custom selector has its own **Transition** panel, independent from the Base tab's Transition. You can set per-property timing overrides for each selector — for example, a different easing for `&:hover` than for the base element.
+
+### How selectors are rendered
+
+Custom selector styles are output as inline CSS in the page's `<head>`. They use the block's unique class name, so they only affect that specific block — not every block of the same type on the page.

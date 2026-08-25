@@ -71,6 +71,10 @@
       "type": "array",
       "default": []
     },
+    "customSelectors": {
+      "type": "object",
+      "default": {}
+    },
     "tmsClassName": {
       "type": "string",
       "default": ""
@@ -147,7 +151,8 @@
     "typography": false,
     "color": false,
     "spacing": false,
-    "dimensions": false
+    "dimensions": false,
+    "splitting": true
   },
   "editorScript": "file:../../build/index.js",
   "render": "file:./render.php"

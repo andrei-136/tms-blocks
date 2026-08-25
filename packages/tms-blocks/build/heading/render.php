@@ -187,6 +187,16 @@ if ( ! defined( 'ABSPATH' ) ) {
         tmsblocks_add_inline_style_once( $handle, $all_css );
     }
 
+    $custom_selectors_css = tmsblocks_process_custom_selectors(
+        $attributes['customSelectors'] ?? [],
+        $unique_class_name,
+        $attributes['breakpointOverrides'] ?? [],
+        $attributes['customBreakpoints'] ?? []
+    );
+    if ( $custom_selectors_css ) {
+        tmsblocks_add_inline_style_once( $handle, $custom_selectors_css );
+    }
+
     // -- Output ---------------------------------------------------------------
 
     $output = "<{$tag}{$attrs}>{$heading_content}</{$tag}>";

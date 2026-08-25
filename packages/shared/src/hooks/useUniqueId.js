@@ -1,4 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { dispatch } from '@wordpress/data';
+import { store as blockEditorStore } from '@wordpress/block-editor';
 import { generateUniqueId } from '../utils';
 
 // Module-level registry: uniqueId -> clientId (first registrant wins).
@@ -19,13 +21,17 @@ export default function useUniqueId({ uniqueId, clientId, setAttributes, attribu
 
     if (!uniqueId) {
       
-      setAttributes({ [attributeName]: generateUniqueId() });
+      dispatch(blockEditorStore).updateBlockAttributes(clientId, {
+        [attributeName]: generateUniqueId(),
+      });
       return;
     }
     
     const existing = registry.get(uniqueId);
     if (existing && existing !== clientId) {
-      setAttributes({ [attributeName]: generateUniqueId() });
+      dispatch(blockEditorStore).updateBlockAttributes(clientId, {
+        [attributeName]: generateUniqueId(),
+      });
       return;
     }
 

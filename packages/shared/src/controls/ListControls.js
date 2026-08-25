@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { PanelBody, SelectControl, TextControl, Button, ToggleControl } from '@wordpress/components';
 import { MediaUpload, MediaUploadCheck } from '@wordpress/block-editor';
 import ControlLabel from './ControlLabel';
-import { isStylePropSet } from '../style-utils';
+import PanelTitle from './PanelTitle';
+import { getModificationLevel } from '../style-utils';
 
-export default function ListControls({ customStyle = {}, updateCustomStyle, usePanelBody = true }) {
+export default function ListControls({ customStyle = {}, updateCustomStyle, usePanelBody = true, masterStyle = null }) {
   const presetValues = ['', 'none', 'disc', 'circle', 'square', 'decimal', 'decimal-leading-zero', 'lower-roman', 'upper-roman', 'lower-greek', 'lower-alpha', 'upper-alpha'];
   const currentValue = customStyle.listStyleType || '';
 
@@ -18,10 +19,17 @@ export default function ListControls({ customStyle = {}, updateCustomStyle, useP
 
   const showCustomInput = customMode || isCustomValue;
 
+  // Dot-system levels: standalone → blue when set; instance → purple when it
+  // matches the master's style, orange when overridden.
+  const listStyleTypeLevel     = getModificationLevel(customStyle, ['listStyleType'],     masterStyle);
+  const listStylePositionLevel = getModificationLevel(customStyle, ['listStylePosition'], masterStyle);
+  const listStyleImageLevel    = getModificationLevel(customStyle, ['listStyleImage'],    masterStyle);
+  const listLevel = Math.max(listStyleTypeLevel, listStylePositionLevel, listStyleImageLevel);
+
   const controls = (
     <>
       <SelectControl
-        label={<ControlLabel label="List Style Type" isSet={isStylePropSet(customStyle, 'listStyleType')} />}
+        label={<ControlLabel label="List Style Type" level={listStyleTypeLevel} />}
         value={showCustomInput ? 'custom' : selectValue}
         options={[
           { label: 'Default', value: '' },
@@ -49,7 +57,7 @@ export default function ListControls({ customStyle = {}, updateCustomStyle, useP
       />
       {showCustomInput && (
         <TextControl
-          label={<ControlLabel label="Custom List Style Type" isSet={isStylePropSet(customStyle, 'listStyleType')} />}
+          label={<ControlLabel label="Custom List Style Type" level={listStyleTypeLevel} />}
           value={currentValue}
           onChange={(value) => {
             updateCustomStyle('listStyleType', value || null);
@@ -59,7 +67,7 @@ export default function ListControls({ customStyle = {}, updateCustomStyle, useP
         />
       )}
       <SelectControl
-        label={<ControlLabel label="List Style Position" isSet={isStylePropSet(customStyle, 'listStylePosition')} />}
+        label={<ControlLabel label="List Style Position" level={listStylePositionLevel} />}
         value={customStyle.listStylePosition || ''}
         options={[
           { label: 'Default', value: '' },
@@ -69,7 +77,7 @@ export default function ListControls({ customStyle = {}, updateCustomStyle, useP
         onChange={(value) => updateCustomStyle('listStylePosition', value || null)}
       />
       <ToggleControl
-        label={<ControlLabel label="Custom Marker Image" isSet={isStylePropSet(customStyle, 'listStyleImage')} />}
+        label={<ControlLabel label="Custom Marker Image" level={listStyleImageLevel} />}
         checked={useCustomImage}
         onChange={(value) => {
           setUseCustomImage(value);
@@ -103,7 +111,7 @@ export default function ListControls({ customStyle = {}, updateCustomStyle, useP
             />
           </MediaUploadCheck>
           <TextControl
-            label={<ControlLabel label="Or enter URL" isSet={isStylePropSet(customStyle, 'listStyleImage')} />}
+            label={<ControlLabel label="Or enter URL" level={listStyleImageLevel} />}
             value={customStyle.listStyleImage ? customStyle.listStyleImage.replace(/^url\(['"]?|['"]?\)$/g, '') : ''}
             onChange={(value) => updateCustomStyle('listStyleImage', value ? `url('${value}')` : null)}
             placeholder="https://example.com/marker.png"
@@ -119,7 +127,7 @@ export default function ListControls({ customStyle = {}, updateCustomStyle, useP
   }
 
   return (
-    <PanelBody title="List Controls" initialOpen={false}>
+    <PanelBody title={<PanelTitle title="List Controls" level={listLevel} />} initialOpen={false}>
       {controls}
     </PanelBody>
   );

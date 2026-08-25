@@ -10,8 +10,8 @@ import {
 } from '@wordpress/block-editor';
 import { useSelect } from '@wordpress/data';
 import { Button, TabPanel } from '@wordpress/components';
-import { customStyleToInlineStyle, customStyleToCSSString, hasModifiedStyleProps } from '../../../shared/src/style-utils';
-import { useCustomStyle, useUniqueId, useBreakpointStyles } from '../../../shared/src/hooks';
+import { customStyleToInlineStyle, customStyleToCSSString, hasModifiedStyleProps, computeNextStyle, getCustomSelectorsLevel } from '../../../shared/src/style-utils';
+import { useCustomStyle, useUniqueId, useBreakpointStyles, useCustomSelectorsStyle } from '../../../shared/src/hooks';
 import {
   ListItemSettings,
   StyleControls,
@@ -21,6 +21,9 @@ import {
   CustomAttributesControls,
   ControlLabel,
   PanelTitle,
+  CustomSelectorsControls,
+  TransitionControls,
+  ContentControls,
 } from '../../../shared/src/controls';
 import { resolveBreakpoints } from '../../../shared/src/breakpoints';
 
@@ -130,11 +133,13 @@ function EditCanvas({ attributes, setAttributes, clientId }) {
     <li {...blockProps}>
       {shouldRenderRichText && (
         <RichText
+          identifier="content"
           allowedFormats={['core/bold', 'core/italic', 'core/strikethrough', 'core/code', 'core/subscript', 'core/superscript', 'core/text-color']}
-          tagName="span"
+          tagName="div"
           value={content}
           onChange={(value) => setAttributes({ content: value })}
           placeholder="..."
+
         />
       )}
       {hasInnerBlocks && <div {...innerBlocksProps} />}
@@ -193,6 +198,26 @@ function EditSelected({ attributes, setAttributes, clientId, masterAttributes })
     Object.keys(responsiveStyle[key]?.focusVisible || {}).length > 0
   );
   const isStyleTabModified = isBaseModified || isResponsiveModified;
+
+  // Wrapper tab dot: aggregate override level across all wrapper attributes
+  const wrapperTabLevel = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const attrNames = ['anchorId', 'tmsClassName', 'ariaLabel', 'ariaRole'];
+    let maxLevel = 0;
+    for (const key of attrNames) {
+      const inst = attributes[key] || '';
+      const master = masterAttributes[key] || '';
+      if (!inst && !master) continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    for (const key of ['customAttributes', 'extraAriaAttributes']) {
+      const inst = JSON.stringify(attributes[key] || []);
+      const master = JSON.stringify(masterAttributes[key] || []);
+      if (inst === '[]' && master === '[]') continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    return maxLevel;
+  }, [masterAttributes, attributes]);
 
 
   // -- Block props ------------------------------------------------------------
@@ -257,7 +282,7 @@ function EditSelected({ attributes, setAttributes, clientId, masterAttributes })
           <TabPanel
             className="tmsblocks-list-item-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
-              { name: 'wrapper', title: 'Wrapper' },
+              { name: 'wrapper', title: <ControlLabel label="Wrapper" level={wrapperTabLevel} /> },
               { name: 'styles',  title: <ControlLabel label="Styles"  isSet={isStyleTabModified} /> },
             ]}
           >
@@ -279,15 +304,18 @@ function EditSelected({ attributes, setAttributes, clientId, masterAttributes })
                         attributes={attributes}
                         setAttributes={setAttributes}
                         roleOptions={LIST_ITEM_ROLE_OPTIONS}
+                        masterAttributes={masterAttributes}
                       />
                       <CustomAttributesControls
                         attributes={attributes}
                         setAttributes={setAttributes}
+                        masterAttributes={masterAttributes}
                       />
                       <IdentityControls
                         attributes={attributes}
                         setAttributes={setAttributes}
                         showRenderToggle={false}
+                        masterAttributes={masterAttributes}
                       />
                   </div>
                 );
@@ -300,11 +328,12 @@ function EditSelected({ attributes, setAttributes, clientId, masterAttributes })
                     allBreakpoints={allBreakpoints}
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
-                    isDesktopModified={isBaseModified}
+                    isDesktopModified={isBaseModified || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
-                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
+                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                      getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                     }
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
@@ -317,9 +346,50 @@ function EditSelected({ attributes, setAttributes, clientId, masterAttributes })
                       { name: 'base',          title: <ControlLabel label="Base"          isSet={hasModifiedStyleProps(getActiveContext('base').style,         Object.keys(getActiveContext('base').style         || {}))} /> },
                       { name: 'hover',         title: <ControlLabel label="Hover"         isSet={hasModifiedStyleProps(getActiveContext('hover').style,        Object.keys(getActiveContext('hover').style        || {}))} /> },
                       { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" isSet={hasModifiedStyleProps(getActiveContext('focusVisible').style, Object.keys(getActiveContext('focusVisible').style || {}))} /> },
+                      { name: 'custom-css',    title: <ControlLabel label="CSS+" level={getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, activeBreakpoint)} /> },
                     ]}
                   >
                     {(stateTab) => {
+                      if (stateTab.name === 'custom-css') {
+                        return (
+                          <CustomSelectorsControls
+                            customSelectors={attributes.customSelectors || {}}
+                            onChange={(next) => setAttributes({ customSelectors: next })}
+                            blockClassName={attributes.uniqueId ? `.tmsblocks-list-item-${attributes.uniqueId}` : ''}
+                            activeBreakpoint={activeBreakpoint}
+                            masterAttributes={masterAttributes}
+                            renderStyleControls={(entry, onUpdateEntry, _onRemove, activeIndex, masterEntry) => {
+                              const isPseudo = /^&:{1,2}(before|after)$/.test(entry.selector?.trim());
+                              return (
+                              <React.Fragment key={activeIndex}>
+                              {isPseudo && (
+                              <ContentControls
+                                customStyle={entry.customStyle || {}}
+                                updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                              />
+                              )}
+                              <TransitionControls
+                                target="selector"
+                                customStyle={entry.customStyle || {}}
+                                updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                              />
+                              <StyleControls
+                                updateCustomStyle={(prop, value, unit) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value, unit) })}
+                                attributes={{ ...attributes, customStyle: entry.customStyle || {} }}
+                                setAttributes={(patch) => {
+                                  if (patch.customStyle !== undefined) onUpdateEntry({ customStyle: patch.customStyle });
+                                  else setAttributes(patch);
+                                }}
+                                clientId={clientId}
+                                include={['List']}
+                                exclude={['Transition']}
+                                masterStyle={masterAttributes ? (masterEntry?.customStyle || {}) : null}
+                              />
+                              </React.Fragment>
+                            );}}
+                          />
+                        );
+                      }
                       const stateKey      = stateTab.name === 'focus-visible' ? 'focusVisible' : stateTab.name;
                       const { style, updater } = getActiveContext(stateKey);
                       return (
@@ -349,11 +419,13 @@ function EditSelected({ attributes, setAttributes, clientId, masterAttributes })
       {renderBlock && (
         <li {...blockProps}>
           <RichText
+            identifier="content"
             allowedFormats={['core/bold', 'core/italic', 'core/strikethrough', 'core/code', 'core/subscript', 'core/superscript', 'core/text-color']}
-            tagName="span"
+            tagName="div"
             value={content}
             onChange={(value) => setAttributes({ content: value })}
             placeholder="..."
+
           />
           {(hasInnerBlocks || isSelectedOrChild) && (
             <div {...innerBlocksProps} />
@@ -371,6 +443,7 @@ export default function Edit(props) {
   const { uniqueId } = attributes;
 
   useUniqueId({ uniqueId, clientId, setAttributes });
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-list-item', customSelectors: attributes.customSelectors || {}, breakpointOverrides: attributes.breakpointOverrides || {}, customBreakpoints: attributes.customBreakpoints || [] });
 
   const isSelected = useSelect((select) => {
     const store      = select(blockEditorStore);

@@ -14,15 +14,17 @@ import {
   BreakpointSelector,
   ControlLabel,
   CustomAttributesControls,
+  CustomSelectorsControls,
   IdentityControls,
   PanelTitle,
   StyleControls,
   TagControls,
   TRANSITION_DEFAULT_GLOBAL as DEFAULT_TRANSITION_GLOBAL,
   TransitionControls,
+  ContentControls,
 } from '../../../shared/src/controls';
-import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps } from '../../../shared/src/style-utils';
-import { useCustomStyle, useUniqueId, useBreakpointStyles } from '../../../shared/src/hooks';
+import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps, computeNextStyle, getCustomSelectorsLevel } from '../../../shared/src/style-utils';
+import { useCustomStyle, useUniqueId, useBreakpointStyles, useCustomSelectorsStyle } from '../../../shared/src/hooks';
 import { resolveBreakpoints, BREAKPOINTS } from '../../../shared/src/breakpoints';
 
 // -- Breakpoint state tabs (Base / Hover / Focus-Visible) ---------------------
@@ -84,6 +86,7 @@ function BreakpointStateTabs({
     { name: 'base',          title: <ControlLabel label="Base"          level={baseLevel}  /> },
     { name: 'hover',         title: <ControlLabel label="Hover"         level={hoverLevel} /> },
     { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" level={focusLevel} /> },
+    { name: 'custom-css',    title: <ControlLabel label="CSS+" level={getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, activeBreakpoint)} /> },
   ];
 
   return (
@@ -155,6 +158,48 @@ function BreakpointStateTabs({
                 masterAttributes={masterAttributes}
               />
             </>
+          );
+        }
+
+        if (tab.name === 'custom-css') {
+          return (
+            <CustomSelectorsControls
+              customSelectors={attributes.customSelectors || {}}
+              onChange={(next) => setAttributes({ customSelectors: next })}
+              blockClassName={attributes.uniqueId ? `.tmsblocks-generic-block-${attributes.uniqueId}` : ''}
+              activeBreakpoint={activeBreakpoint}
+              masterAttributes={masterAttributes}
+              renderStyleControls={(entry, onUpdateEntry, _onRemove, activeIndex, masterEntry) => {
+                const isPseudo = /^&:{1,2}(before|after)$/.test(entry.selector?.trim());
+                return (
+                <React.Fragment key={activeIndex}>
+                {isPseudo && (
+                <ContentControls
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                )}
+                <TransitionControls
+                  target="selector"
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                <StyleControls
+                  updateCustomStyle={(prop, value, unit) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value, unit) })}
+                  attributes={{ ...attributes, customStyle: entry.customStyle || {} }}
+                  setAttributes={(patch) => {
+                    if (patch.customStyle !== undefined) onUpdateEntry({ customStyle: patch.customStyle });
+                    else setAttributes(patch);
+                  }}
+                  clientId={clientId}
+                  include={['List']}
+                  exclude={['Transition']}
+                  masterStyle={masterAttributes ? (masterEntry?.customStyle || {}) : null}
+                  masterAttributes={masterAttributes}
+                />
+                </React.Fragment>
+              );}}
+            />
           );
         }
 
@@ -253,6 +298,8 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
   });
 
   // -- Style updaters ---------------------------------------------------------
+
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-generic-block', customSelectors: attributes.customSelectors || {}, breakpointOverrides: attributes.breakpointOverrides || {}, customBreakpoints: attributes.customBreakpoints || [] });
 
   const updateCustomStyle             = useCustomStyle(customStyle,             setAttributes, 'customStyle');
   const updateCustomStyleHover        = useCustomStyle(customStyleHover,        setAttributes, 'customStyleHover');
@@ -362,10 +409,15 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
     select(blockEditorStore).getSelectedBlockClientId() === clientId,
   [clientId]);
 
+  const isTemplateLocked = useSelect((select) => {
+    const block = select(blockEditorStore).getBlock(clientId);
+    return block?.attributes?.templateLock === 'all';
+  }, [clientId]);
+
   const innerBlocksProps = useInnerBlocksProps(blockProps, {
     defaultBlock: { name: 'tmsblocks/paragraph' },
     directInsert: false,
-    renderAppender: isDirectlySelected
+    renderAppender: (isDirectlySelected && !isTemplateLocked)
       ? () => <ButtonBlockAppender className="tmsblocks-block-appender__button" rootClientId={clientId} />
       : false,
   });
@@ -405,14 +457,15 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
                     allBreakpoints={allBreakpoints}
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
-                    isDesktopModified={isBaseModified}
-                    desktopLevel={desktopLevel}
+                    isDesktopModified={isBaseModified || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
+                    desktopLevel={Math.max(desktopLevel, getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop'))}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
-                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
+                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                      getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                     }
-                    getBreakpointLevel={getBreakpointLevel}
+                    getBreakpointLevel={(key) => Math.max(getBreakpointLevel(key), getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key))}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />

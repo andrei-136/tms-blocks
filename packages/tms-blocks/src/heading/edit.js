@@ -21,11 +21,11 @@ import {
   ToolbarGroup,
 } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
-import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps } from '../../../shared/src/style-utils';
-import { useCustomStyle, useUniqueId, useDynamicField, useBreakpointStyles } from '../../../shared/src/hooks';
+import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps, computeNextStyle, getCustomSelectorsLevel } from '../../../shared/src/style-utils';
+import { useCustomStyle, useUniqueId, useDynamicField, useBreakpointStyles, useCustomSelectorsStyle } from '../../../shared/src/hooks';
 import {
   StyleControls, IdentityControls,
-  AriaControls, BreakpointSelector, CustomAttributesControls, ControlLabel,
+  AriaControls, BreakpointSelector, CustomAttributesControls, ControlLabel, CustomSelectorsControls, TransitionControls, ContentControls,
 } from '../../../shared/src/controls';
 import PanelTitle from '../../../shared/src/controls/PanelTitle';
 import DynamicFieldSettings from '../../../shared/src/controls/DynamicFieldSettings';
@@ -179,6 +179,7 @@ function BreakpointStateTabs({
     { name: 'base',          title: <ControlLabel label="Base"          level={baseLevel}  /> },
     { name: 'hover',         title: <ControlLabel label="Hover"         level={hoverLevel} /> },
     { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" level={focusLevel} /> },
+    { name: 'custom-css',    title: <ControlLabel label="CSS+" level={getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, activeBreakpoint)} /> },
   ];
 
   return (
@@ -216,6 +217,48 @@ function BreakpointStateTabs({
               controlProps={{ Display: { useUtilityClasses: false } }}
               masterStyle={masterFocusStyle}
               masterAttributes={masterAttributes}
+            />
+          );
+        }
+
+        if (tab.name === 'custom-css') {
+          return (
+            <CustomSelectorsControls
+              customSelectors={attributes.customSelectors || {}}
+              onChange={(next) => setAttributes({ customSelectors: next })}
+              blockClassName={attributes.uniqueId ? `.tmsblocks-heading-${attributes.uniqueId}` : ''}
+              activeBreakpoint={activeBreakpoint}
+              masterAttributes={masterAttributes}
+              renderStyleControls={(entry, onUpdateEntry, _onRemove, activeIndex, masterEntry) => {
+                const isPseudo = /^&:{1,2}(before|after)$/.test(entry.selector?.trim());
+                return (
+                <React.Fragment key={activeIndex}>
+                {isPseudo && (
+                <ContentControls
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                )}
+                <TransitionControls
+                  target="selector"
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                <StyleControls
+                  updateCustomStyle={(prop, value, unit) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value, unit) })}
+                  attributes={{ ...attributes, customStyle: entry.customStyle || {} }}
+                  setAttributes={(patch) => {
+                    if (patch.customStyle !== undefined) onUpdateEntry({ customStyle: patch.customStyle });
+                    else setAttributes(patch);
+                  }}
+                  clientId={clientId}
+                  include={['List']}
+                  exclude={HEADING_STYLE_EXCLUDE}
+                  masterStyle={masterAttributes ? (masterEntry?.customStyle || {}) : null}
+                  masterAttributes={masterAttributes}
+                />
+                </React.Fragment>
+              );}}
             />
           );
         }
@@ -266,6 +309,8 @@ function EditCanvas({ attributes, setAttributes, clientId, previewValues }) {
   const uniqueClassName   = useHeadingStyle({ uniqueId, clientId, customStyle, responsiveStyle, breakpointOverrides, customBreakpoints });
   const combinedClassName = [tmsClassName, uniqueClassName].filter(Boolean).join(' ').trim();
   const invalidTags       = useInvalidTags(content, isDynamic);
+
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-heading', customSelectors: attributes.customSelectors || {}, breakpointOverrides: attributes.breakpointOverrides || {}, customBreakpoints: attributes.customBreakpoints || [] });
 
   const blockProps = useBlockProps({
     id:           anchorId || undefined,
@@ -407,15 +452,28 @@ function EditSelected({
   const hoverDesktopLevel  = getModificationLevel(customStyleHover,        hoverKeys, masterAttributes ? (masterAttributes.customStyleHover        ?? {}) : null);
   const focusDesktopLevel  = getModificationLevel(customStyleFocusVisible, focusKeys, masterAttributes ? (masterAttributes.customStyleFocusVisible ?? {}) : null);
 
-  // Dot for heading level override — orange when instance level differs from master.
-  // masterAttributes.level may be absent if the master snapshot is stale;
-  // treat a missing master value as "different" → orange dot.
+  // Dot for heading level — same wrapper-property convention as the other
+  // controls: NO dot on standalone; on an instance, no dot when both are at
+  // the default (2), purple when the instance matches the master, orange
+  // when overridden. masterAttributes.level may be absent if the master
+  // snapshot is stale — fall back to the block default (2).
   const headingLevelDot = useMemo(() => {
     if (!masterAttributes) return 0;
-    const masterLevel = masterAttributes.level;
-    if (masterLevel === undefined || masterLevel === null) return (safeLevel !== 2 ? 3 : 0);
-    return masterLevel !== safeLevel ? 3 : 0;
+    const masterLevel = masterAttributes.level ?? 2;
+    if (safeLevel === 2 && masterLevel === 2) return 0;
+    return safeLevel === masterLevel ? 2 : 3;
   }, [masterAttributes, safeLevel]);
+
+  // Dynamic-content toggle dot. Mirrors the wrapper-property convention
+  // (see WrapperControls / IdentityControls): NO dot on standalone blocks —
+  // wrapper properties have no standalone default indicator, unlike CSS
+  // properties. On an instance: purple when set + matches master, orange
+  // when overridden; both at the default (off) shows no dot.
+  const dynamicLevel = masterAttributes
+    ? (isDynamic === false && !(masterAttributes.isDynamic || false)
+        ? 0
+        : (isDynamic === (masterAttributes.isDynamic || false) ? 2 : 3))
+    : 0;
 
   // Breakpoint-level dots: compare responsive styles against master's responsive styles.
   // When masterAttributes exists, an absent responsive-style entry is treated as
@@ -472,6 +530,8 @@ function EditSelected({
 
   const uniqueClassName   = useHeadingStyle({ uniqueId, clientId, customStyle, responsiveStyle, breakpointOverrides, customBreakpoints });
   const combinedClassName = [tmsClassName, uniqueClassName].filter(Boolean).join(' ').trim();
+
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-heading', customSelectors: attributes.customSelectors || {}, breakpointOverrides: attributes.breakpointOverrides || {}, customBreakpoints: attributes.customBreakpoints || [] });
 
   const blockProps = useBlockProps({
     id:           anchorId || undefined,
@@ -547,7 +607,7 @@ function EditSelected({
                       />
                       <div style={{ borderTop: '1px solid #eee', marginTop: '16px', paddingTop: '16px' }}>
                         <ToggleControl
-                          label="Use dynamic content"
+                          label={<ControlLabel label="Use dynamic content" level={dynamicLevel} />}
                           checked={isDynamic}
                           onChange={(next) => {
                             if (next) {
@@ -614,14 +674,15 @@ function EditSelected({
                     allBreakpoints={allBreakpoints}
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
-                    isDesktopModified={isBaseModified}
-                    desktopLevel={desktopLevel}
+                    isDesktopModified={isBaseModified || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
+                    desktopLevel={Math.max(desktopLevel, getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop'))}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
-                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
+                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                      getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                     }
-                    getBreakpointLevel={getBreakpointLevel}
+                    getBreakpointLevel={(key) => Math.max(getBreakpointLevel(key), getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key))}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />

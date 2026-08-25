@@ -1,8 +1,11 @@
 <?php
 /**
  * Plugin Name: TMS Blocks
- * Description: A set of custom Gutenberg blocks.
- * Version: 1.0.4
+ * Plugin URI: https://terriblemonsterstudio.com/tms-blocks/
+ * Author: Terrible Monster Studio
+ * Author URI: https://terriblemonsterstudio.com/
+ * Description: Gutenberg blocks for dynamic content and custom fields, designed for block themes and full-site editing.
+ * Version: 1.1.0
  * Requires at least: 6.3 
  * Requires PHP: 7.4
  * License: GPL-2.0-or-later
@@ -183,6 +186,104 @@ function tmsblocks_process_custom_styles( $custom_style_attr ) {
     }
 
     return implode( '; ', $style_array ) . ';';
+}
+
+/**
+ * Process custom CSS selectors and return CSS rules string.
+ *
+ * Now per-breakpoint. Data shape: { desktop: [...], tablet: [...], mobile: [...] }
+ * For backward compat, a flat array is treated as { desktop: array }.
+ *
+ * Desktop entries render without @media. Non-desktop entries render inside
+ * @media (max-width: ...) blocks using registered breakpoint widths.
+ *
+ * @param array  $custom_selectors   The customSelectors attribute (object or flat array)
+ * @param string $unique_class_name  The block's unique scoped class
+ * @param array  $overrides          Per-block breakpoint size overrides
+ * @param array  $custom_breakpoints Per-block custom breakpoints
+ * @return string CSS string with resolved selectors or empty string
+ */
+function tmsblocks_process_custom_selectors( $custom_selectors, $unique_class_name, $overrides = [], $custom_breakpoints = [] ) {
+    if ( empty( $custom_selectors ) || ! $unique_class_name ) {
+        return '';
+    }
+
+    // Backward compat: flat array → { desktop: array }
+    if ( wp_is_numeric_array( $custom_selectors ) ) {
+        $data = [ 'desktop' => $custom_selectors ];
+    } elseif ( is_array( $custom_selectors ) ) {
+        $data = $custom_selectors;
+    } else {
+        return '';
+    }
+
+    /**
+     * Process a single array of entries into CSS rules.
+     *
+     * @param array $entries Array of { selector, customStyle } objects.
+     * @return string
+     */
+    $process_entries = function( $entries ) use ( $unique_class_name ) {
+        if ( empty( $entries ) || ! is_array( $entries ) ) {
+            return '';
+        }
+
+        $css_rules = [];
+        foreach ( $entries as $entry ) {
+            $selector = trim( $entry['selector'] ?? '' );
+            $selector = str_replace( [ '{', '}', ';' ], '', $selector );
+            $style    = $entry['customStyle'] ?? [];
+
+            if ( '' === $selector || empty( $style ) || ! is_array( $style ) ) {
+                continue;
+            }
+
+            $rules = tmsblocks_process_custom_styles( $style );
+            if ( '' === $rules ) {
+                continue;
+            }
+
+            $resolved = str_replace( '&', '.' . $unique_class_name, $selector );
+            if ( strpos( $resolved, 'body' ) !== 0 ) {
+                $resolved = 'body ' . $resolved;
+            }
+            $css_rules[] = "{$resolved} { {$rules} }";
+        }
+
+        return implode( "\n", $css_rules );
+    };
+
+    // Desktop always renders without @media wrapper
+    $output = $process_entries( $data['desktop'] ?? [] );
+
+    // Non-desktop breakpoints render inside @media
+    $breakpoints = array_merge(
+        tmsblocks_get_breakpoints(),
+        $custom_breakpoints
+    );
+
+    $bp_map = [];
+    foreach ( $breakpoints as $bp ) {
+        $bp_map[ $bp['key'] ] = (int) $bp['maxWidth'];
+    }
+
+    $style_keys = array_keys( $data );
+    foreach ( $style_keys as $key ) {
+        if ( 'desktop' === $key ) continue;
+
+        $max_width = isset( $overrides[ $key ] )
+            ? (int) $overrides[ $key ]
+            : ( $bp_map[ $key ] ?? 0 );
+
+        if ( ! $max_width ) continue;
+
+        $css = $process_entries( $data[ $key ] ?? [] );
+        if ( $css ) {
+            $output .= "\n@media (max-width: {$max_width}px) {\n{$css}\n}";
+        }
+    }
+
+    return $output;
 }
 
 /**

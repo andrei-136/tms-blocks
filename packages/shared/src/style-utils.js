@@ -1,3 +1,5 @@
+import { resolveBreakpoints } from './breakpoints';
+
 const KEYWORD_STYLE_UNITS = new Set([
   'keyword',
   'auto',
@@ -92,6 +94,66 @@ export const customStyleToCSSString = (customStyle = {}) => {
   });
   
   return cssRules.join('; ');
+};
+
+/**
+ * Converts a customSelectors array into a CSS string for the editor.
+ * Data: [ { selector: "&:hover", customStyle: { color: "red" } }, ... ]
+/**
+ * Converts custom CSS selectors (per-breakpoint) to editor CSS.
+ *
+ * Data shape: { desktop: [...], tablet: [...], mobile: [...] }
+ * For backward compat, a flat array is treated as { desktop: array }.
+ *
+ * @param {Object|Array} customSelectors  - Breakpoint-keyed object or flat array.
+ * @param {string}       uniqueClassName   - Block's unique CSS class.
+ * @param {Object}       breakpointOverrides - Optional max-width overrides.
+ * @param {Array}        customBreakpoints   - Optional custom breakpoints.
+ * @returns {string}
+ */
+export const customSelectorsToEditorCSS = (
+  customSelectors = {},
+  uniqueClassName = '',
+  breakpointOverrides = {},
+  customBreakpoints = []
+) => {
+  if (!uniqueClassName) return '';
+
+  // Backward compat: if passed a flat array, treat as desktop
+  const data = Array.isArray(customSelectors) ? { desktop: customSelectors } : customSelectors;
+  if (typeof data !== 'object' || !Object.keys(data).length) return '';
+
+  const processEntries = (entries) => {
+    if (!Array.isArray(entries) || !entries.length) return '';
+    return entries
+      .map(({ selector, customStyle }) => {
+        const sel = (selector || '').trim().replace(/[{};]/g, '');
+        const rules = customStyleToCSSString(customStyle || {});
+        if (!sel || !rules) return '';
+        const resolved = sel.replace(/&/g, `.${uniqueClassName}`);
+        return `.editor-styles-wrapper ${resolved} { ${rules} }`;
+      })
+      .filter(Boolean)
+      .join('\n');
+  };
+
+  // Desktop always renders without @media wrapper
+  const desktopCSS = processEntries(data.desktop || []);
+
+  // Non-desktop breakpoints render inside @media
+  const styleKeys = Object.keys(data).filter((k) => k !== 'desktop');
+  const resolved = resolveBreakpoints(breakpointOverrides, styleKeys, customBreakpoints);
+
+  const responsiveCSS = resolved
+    .map(({ key, maxWidth }) => {
+      const css = processEntries(data[key]);
+      if (!css) return '';
+      return `@media (max-width: ${maxWidth}px) {\n${css}\n}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+
+  return [desktopCSS, responsiveCSS].filter(Boolean).join('\n');
 };
 
 export const isStyleValueEmpty = (value) => {
@@ -203,6 +265,64 @@ export const getModificationLevel = (customStyle = {}, props = [], masterStyle =
   return level;
 };
 
+// -- Custom selectors (CSS+) --------------------------------------------------
+
+// Normalizes customSelectors to the per-breakpoint object shape.
+// Backward compat: flat array → { desktop: array }.
+export function normalizeCustomSelectors(raw) {
+  if (Array.isArray(raw)) return { desktop: raw };
+  if (raw && typeof raw === 'object') return raw;
+  return {};
+}
+
+// Level for a single selector entry. Only meaningful on instances (hasMaster):
+// purple (2) when it matches the master's matching entry, orange (3) when it
+// overrides or is instance-only. Compares the union of instance + master props
+// so a cleared master property still counts as an override.
+export function getCustomSelectorsEntryLevel(entry = {}, masterEntry = null, hasMaster = false) {
+  const instStyle = entry.customStyle || {};
+  const masterStyle = hasMaster ? (masterEntry?.customStyle ?? {}) : null;
+  const props = [...new Set([
+    ...Object.keys(instStyle),
+    ...(masterStyle ? Object.keys(masterStyle) : []),
+  ])];
+  return getModificationLevel(instStyle, props, masterStyle);
+}
+
+// Aggregate level for the CSS+ tab title. On a standalone block every entry is
+// custom by definition, so blue (1) only signals "something exists here". On an
+// instance it compares against the master: 0 when both are empty, purple (2)
+// when it matches, orange (3) when it overrides.
+export function getCustomSelectorsLevel(customSelectors = {}, masterAttributes = null, activeBreakpoint = null) {
+  const inst = normalizeCustomSelectors(customSelectors);
+  const hasMaster = masterAttributes != null;
+  if (!hasMaster) {
+    const bps = activeBreakpoint ? [activeBreakpoint] : Object.keys(inst);
+    const hasContent = bps.some((bp) =>
+      (inst[bp] || []).some((entry) =>
+        Object.keys(entry?.customStyle || {}).some((prop) => !isStyleValueEmpty(entry.customStyle[prop]))
+      )
+    );
+    return hasContent ? 1 : 0;
+  }
+  const master = normalizeCustomSelectors(masterAttributes.customSelectors);
+  const bps = activeBreakpoint
+    ? [activeBreakpoint]
+    : [...new Set([...Object.keys(inst), ...Object.keys(master)])];
+  let max = 0;
+  for (const bp of bps) {
+    const instEntries = inst[bp] || [];
+    const masterEntries = master[bp] || [];
+    for (let i = 0; i < instEntries.length; i++) {
+      const entry = instEntries[i] || {};
+      const masterEntry = masterEntries.find((e) => (e.selector || '') === (entry.selector || '')) || masterEntries[i];
+      const lvl = getCustomSelectorsEntryLevel(entry, masterEntry, true);
+      if (lvl > max) max = lvl;
+    }
+  }
+  return max;
+}
+
 // src/shared/style-helpers.js
 
 export function getNestedValue(obj, pathParts) {
@@ -225,7 +345,7 @@ export function computeNextStyle(currentStyle, prop, value, unit) {
   if (prop && typeof prop === 'object' && value === undefined && unit === undefined) {
     const nextStyle = { ...currentStyle };
     Object.entries(prop).forEach(([key, updateValue]) => {
-      if (updateValue === '' || updateValue === null || updateValue === undefined) {
+      if (updateValue === '' || updateValue === null || updateValue === undefined || isStyleValueEmpty(updateValue)) {
         delete nextStyle[key];
         return;
       }

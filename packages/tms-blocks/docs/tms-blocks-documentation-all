@@ -1,0 +1,966 @@
+# TMS Blocks — Complete Documentation
+
+---
+
+# TMS Blocks
+**Contributors:** terriblemonster  
+**Tags:** custom fields, dynamic content, post meta, responsive blocks, gutenberg blocks  
+**Requires at least:** 6.3  
+**Tested up to:** 7.0  
+**Stable tag:** 1.0.6  
+**Requires PHP:** 7.4  
+**License:** GPLv2 or later  
+
+## Description
+
+TMS Blocks adds custom blocks for the WordPress block editor (Gutenberg).
+
+The blocks are meant to act like a transparent interface for the html and css produced by them.
+
+The plugin currently includes the following blocks:
+- Link
+- Dynamic Field
+- Generic Block
+- Heading
+- Image
+- List
+- List Item
+- Paragraph
+- Post Context
+
+These blocks are used to define content structure and render block output in a predictable way.
+
+### Key Features
+- Block collection focused on text, media, list, anchor, and context-aware output use cases
+- Dynamic field rendering for displaying values from configured sources
+- Server-rendered output for selected blocks where runtime data is required
+- Editor support for configuring block-specific settings through block attributes
+
+### Requirements
+- WordPress 6.3 or higher
+- PHP 7.4 or higher
+- The block editor (Gutenberg); Classic Editor is not supported
+
+## Changelog
+
+### 1.0.6
+* Added: Custom CSS Selectors feature (CSS+ tab) — add arbitrary selectors (&:hover, &::before, & ul li) with full StyleControls per selector
+* Added: Transition controls for custom selectors with per-property duration/easing/delay overrides
+* Added: Content controls for pseudo-element selectors — auto-quotes bare strings, stores as composite object (source + derived CSS value)
+* Added: Frontend PHP rendering for custom selector styles via wp_add_inline_style
+* Added: Selector sanitization — strips {, }, ; characters; auto-prepends & if missing
+* Fixed: Tab overflow in BreakpointStateTabs with many tabs
+
+### 1.0.5
+* Fixed: React error #185 when duplicating multiple TMS blocks simultaneously
+* Added Post/Page link source option to Anchor block with searchable picker
+* Anchor block link source now uses three-way selector: Post/Page, URL, Dynamic
+* Fixed: Flex/Grid Item button no longer shows orange override dot on standalone blocks
+* Paragraph block: enabled link format in RichText toolbar
+* Display panel: overflow splits into overflow-x/overflow-y with linked toggle
+
+---
+
+# User Documentation
+
+TMS Blocks is a collection of custom blocks for the WordPress block editor. It is designed to help you build clean, structured content using blocks for text, images, lists, links, and dynamic content.
+
+The plugin focuses on practical editing tools instead of complicated page-building workflows. You can create content visually in the editor, adjust styling when needed, and use dynamic values in places where content should update automatically.
+
+## Getting started
+
+After activating the plugin, open any post or page in the block editor and search for the block you want to add. Most blocks can be inserted from the block inserter and then customized from the sidebar settings.
+
+A simple way to begin is:
+
+1. add a text or media block from TMS Blocks
+2. adjust the content in the editor canvas
+3. open the sidebar to configure settings such as styles, identity, or dynamic content
+4. preview the page and confirm the result
+
+## Blocks
+
+| Block | Description |
+|---|---|
+| TMS Block (Generic Block) | Flexible semantic HTML wrapper — the core structural block |
+| TMS Heading | Titles and section headings, H1–H6 |
+| TMS Paragraph | Body text with truncation and dynamic content |
+| TMS Img | Images from library, URL, dynamic field, or context |
+| TMS Link (Anchor) | Clickable links with dynamic URL and label support |
+| TMS List | Ordered and unordered lists |
+| TMS List Item | Individual list entries with nested block support |
+| TMS Dynamic Field | Output post data, custom fields, taxonomy terms, and more |
+| Post Context | Simpler Query Loop — point child blocks at a single post |
+
+## Shared reference
+
+| Page | Description |
+|---|---|
+| The Styles tab | Breakpoint selector, state tabs, style panels, transition controls, and the CSS+ tab for custom selectors — shared across most blocks |
+
+---
+
+# The Styles tab
+
+Most TMS blocks include a **Styles** tab in the settings sidebar. It works the same way across blocks, so it is documented here once rather than repeated for each block.
+
+## Breakpoint Selector
+
+At the top of the Styles tab, you'll see a breakpoint selector. This lets you switch between:
+
+- **Desktop** — the default, full-width view
+- **Tablet** — screens up to 1024px wide
+- **Mobile** — screens up to 767px wide
+
+Styles you set under Desktop apply everywhere. Styles you set under Tablet or Mobile only apply at those screen sizes and smaller — they override the Desktop values just like a CSS `@media` query would.
+
+You can also add **custom breakpoints** with any width you like.
+
+## State tabs
+
+Within each breakpoint, there are three states:
+
+- **Base** — the normal appearance of the element
+- **Hover** — styles that apply when the mouse is over the element
+- **Focus-Visible** — styles that apply when the element is focused via keyboard navigation
+
+Each state has its own independent set of style controls. This means you can change the background color on hover, add an outline on focus, or adjust spacing at smaller screen sizes — all without writing any CSS.
+
+## Style panels
+
+The style controls inside each state tab give you fine-grained control over the element's appearance:
+
+| Panel | What you can set |
+|---|---|
+| **Display** | `display` (block, flex, grid, inline, none), `overflow`, `cursor`, `z-index`, `visibility`, and flex/grid item alignment |
+| **Spacing** | `margin` and `padding` for all four sides, with per-side overrides |
+| **Dimension** | `width`, `min-width`, `max-width`, `height`, `min-height`, `max-height`, `aspect-ratio`, and `box-sizing` |
+| **Typography** | `font-family`, `font-size`, `font-weight`, `font-style`, `line-height`, `letter-spacing`, `text-align`, `text-decoration`, `text-transform`, and `color` |
+| **Background** | `background-color` and background images with repeat, position, size, and attachment |
+| **Border** | border width, style, and color for all four sides, plus `border-radius` |
+| **Effects** | `box-shadow`, `opacity`, `filter` (blur, brightness, contrast, etc.), and `backdrop-filter` |
+| **Position** | `position` (static, relative, absolute, fixed, sticky), plus top/right/bottom/left offsets |
+| **Gap** | `gap`, `row-gap`, and `column-gap` — useful when the element is a flex or grid container |
+
+## Transition controls
+
+When you have hover or focus-visible styles set, you'll also see the **Transition** panel. This controls how smoothly the element animates between states:
+
+- **Duration** — how long the transition takes (e.g. `0.2s`)
+- **Easing** — the acceleration curve (`ease`, `ease-in`, `ease-out`, `ease-in-out`, `linear`, or a custom cubic-bezier)
+- **Delay** — how long to wait before the transition starts
+
+You can set a single global transition for all properties, or expand to control each CSS property individually.
+
+## CSS+ tab — custom CSS selectors
+
+The **CSS+** tab lets you write custom CSS selectors that target the block, with full style control for each selector. Use `&` as a placeholder for the block's own CSS class.
+
+### Adding a selector
+
+Click **+ Add selector**, then type a selector in the field. The `&` is optional — if you leave it out, it is added automatically.
+
+| You type | Resolves to |
+|---|---|
+| `:hover` | `&:hover` |
+| `::before` | `&::before` |
+| `ul li` | `& ul li` (targets nested list items inside this block) |
+| `&[open]` | `&[open]` (targets the block when it has an `open` attribute) |
+
+Selectors are always scoped to the block — you cannot write selectors that target other elements on the page.
+
+### Styling a selector
+
+Click the radio button next to a selector to select it. The full set of style panels (Typography, Colors, Border, Effects, Position, etc.) appears below. These work exactly like the Base/Hover/Focus-Visible state tabs — the only difference is these styles are output under your custom selector instead of a built-in pseudo-class.
+
+### Pseudo-elements (`::before`, `::after`)
+
+When you create a `&::before` or `&::after` selector, a **Content** panel appears above the other style panels. This sets the CSS `content` property — which is required for a pseudo-element to render.
+
+You can type bare text (it is automatically quoted) or enter CSS functions directly:
+
+| You type | CSS output |
+|---|---|
+| `→` | `content: "→"` |
+| `url("icon.svg")` | `content: url("icon.svg")` |
+| `attr(data-label)` | `content: attr(data-label)` |
+| `""` | `content: ""` (empty, for decorative shapes) |
+
+If the Content field is left empty, it defaults to `content: ""` so the pseudo-element still renders.
+
+### Transition in custom selectors
+
+Each custom selector has its own **Transition** panel, independent from the Base tab's Transition. You can set per-property timing overrides for each selector — for example, a different easing for `&:hover` than for the base element.
+
+### How selectors are rendered
+
+Custom selector styles are output as inline CSS in the page's `<head>`. They use the block's unique class name, so they only affect that specific block — not every block of the same type on the page.
+
+---
+
+# TMS Heading block
+
+The TMS Heading block is used for titles and section headings. It gives you control over the heading level — H1 through H6 — and supports both manual text and dynamic content. You can type a heading directly, edit the raw HTML, or pull the heading text from post data.
+
+## Settings sidebar
+
+The settings sidebar has two tabs:
+
+- **Wrapper** — Heading level, content source, and attributes
+- **Styles** — Visual appearance (see The Styles tab)
+
+### Wrapper tab
+
+#### Heading Level
+Choose the heading level from H1 to H6. The default is H2. You can also change the level quickly from the block toolbar.
+
+**Tip:** Use heading levels in order to keep your page well structured. Reserve H1 for the main page or post title when possible, and use H2–H6 for subsections.
+
+#### Dynamic content
+At the top of the Wrapper tab, you'll find the **Use dynamic content** toggle. When turned off, you type the heading text directly. When turned on, the block pulls its text from dynamic data instead.
+
+When dynamic content is enabled, you'll see the dynamic field settings:
+
+- **Field path** — Choose what data to display using the step-by-step field builder. You can pull from post fields, custom fields, taxonomy terms, author info, and more.
+- **Separator** — When the field returns multiple values, this text goes between them. The default is a comma and space (`, `).
+- **Empty text** — What to show when the dynamic field has no value. Leave it blank to output an empty heading, or set fallback text.
+- **Date format** — When pulling a date field, choose a custom PHP date format (e.g. `F j, Y` for "January 1, 2026").
+- **Comments text** — When pulling comment counts, customize the singular and plural labels.
+- **Post source** — Choose whether to pull from the current post (`current`) or a specific post (`specific`).
+
+**Tip:** Use the preview area at the bottom of the dynamic field settings to confirm the right heading text is resolved before you publish.
+
+#### Content (manual mode)
+When dynamic content is off, type your heading directly in the block. You can use the standard WordPress text formatting toolbar for bold, italic, strikethrough, code, subscript, superscript, and text color.
+
+#### ARIA Controls
+- **ARIA Label** — A text description of the heading for screen readers.
+- **Role** — Override the implicit ARIA role of the heading.
+- **Extra ARIA Attributes** — Add other `aria-*` attributes as key-value pairs.
+
+#### Custom Attributes
+Add your own HTML attributes to the heading element:
+- **`data-*` attributes** — for custom JavaScript, analytics, or styling hooks
+- **`tabindex`** — to control keyboard focus order
+- **`title`** — a tooltip that appears on hover
+
+#### Identity Controls
+- **ID** — Sets the `id` attribute on the element. Spaces are automatically converted to dashes.
+- **CSS Class** — Add one or more custom CSS class names for targeting with custom stylesheets.
+
+## Example HTML output
+
+```html
+<h2 id="section-overview" class="tmsblocks-heading tmsblocks-heading-abc456 section-title" aria-label="Overview section">
+  Getting Started with TMS Blocks
+</h2>
+```
+
+Auto-generated CSS:
+```css
+body .tmsblocks-heading-abc456 {
+  font-size: 28px; font-weight: 700; line-height: 1.3;
+  color: #1a1a1a; margin-top: 32px; margin-bottom: 12px;
+}
+@media (max-width: 767px) {
+  body .tmsblocks-heading-abc456 { font-size: 22px; margin-top: 24px; }
+}
+```
+
+## Tips
+- **Respect the heading hierarchy.** Don't skip levels — an H2 should be followed by H3 subsections, not H4.
+- **Set an ID for anchor links.** If you plan to link to a section, give its heading a memorable ID.
+- **Dynamic headings are great for templates.** Pull the post title, author name, or a custom field as a heading.
+
+## Example uses
+- a page section title
+- a dynamically pulled post title in a template
+- a featured heading in a content card
+- an anchor-linked heading for a table of contents
+- a styled hero title with custom typography and responsive sizing
+
+---
+
+# TMS Paragraph block
+
+The TMS Paragraph block is used for body text. It works much like the standard WordPress paragraph block, but it also includes extra styling options, dynamic content support, and text truncation — all within the same familiar editing experience.
+
+## Settings sidebar
+
+The settings sidebar has two tabs:
+
+- **Wrapper** — Content source, tag selection, truncation, and attributes
+- **Styles** — Visual appearance (see The Styles tab)
+
+### Wrapper tab
+
+#### Dynamic content
+Toggle to pull content from dynamic data — post fields, custom fields, taxonomy terms, author info, and more. Includes field path builder, separator, empty text, date format, comments text, and post source.
+
+#### Content (manual mode)
+Type your paragraph text directly in the block with standard WordPress text formatting toolbar.
+
+#### Element Tag
+Choose the HTML tag: **p** (paragraph, default) or **figcaption** (figure caption).
+
+#### Truncation
+- **Enable truncation** — Turn it on to limit the output.
+- **Length** — How many characters or words to show before cutting off.
+- **Unit** — Choose between **characters** or **words**.
+- **Suffix** — The text appended after truncation (default is `...`).
+
+**Tip:** In the editor, the block always shows the truncated version so you can see exactly what visitors will see.
+
+#### ARIA Controls, Custom Attributes, Identity Controls
+Same as TMS Heading block.
+
+## Example HTML output
+
+```html
+<p id="post-excerpt" class="tmsblocks-paragraph tmsblocks-paragraph-xyz789 post-excerpt" aria-label="Post excerpt">
+  This is a shortened version of the full article content that gives readers a
+  quick preview of what to expect before they click through to read more&hellip;
+</p>
+```
+
+## Tips
+- **Use truncation for previews.** When building archive pages or post listings, enable truncation to keep summaries consistent.
+- **Choose `figcaption` when appropriate.** If your paragraph describes an image or figure, using the `figcaption` tag adds semantic meaning.
+
+## Example uses
+- a standard body paragraph
+- a dynamic post excerpt or custom field value
+- a truncated teaser in an archive or listing layout
+- a figure caption under an image
+
+---
+
+# TMS Link (Anchor) block
+
+The TMS Link block creates a clickable link — an `<a>` tag — with full control over the destination, the visible label, and the link's behavior. You can use it for simple text links, links that wrap inner blocks (like a linked card), or links that pull their URL and label dynamically from post data.
+
+> **Note:** In the editor, the block appears as a `<div>` wrapper so you can place block-level elements inside it. On the front end, it renders as a proper `<a>` tag.
+
+## Settings sidebar
+
+The settings sidebar has two tabs:
+
+- **Wrapper** — URL, label, link behavior, and attributes
+- **Styles** — Visual appearance (see The Styles tab)
+
+### Wrapper tab
+
+#### Link URL
+**Manual URL** — Type or paste a URL. Template variables supported: `{{page_url}}`, `{{post_url}}`, `{{site_url}}`, `{{title}}`.
+
+**Dynamic link** — Turn on the **Use dynamic link** toggle to pull the URL from dynamic data. Special dynamic paths:
+- `link:author_archive` — links to the post author's archive page
+- `link:author_mailto` — creates a `mailto:` link for the post author's email
+- `link:term_archive` — links to the first taxonomy term's archive page
+
+#### Link label
+**Manual label** — Type the label text directly. Uses inline formatting and wraps in a `<span>` inside the `<a>` tag.
+
+**Dynamic label** — Pull the label from dynamic data via an independent field path.
+
+If you don't provide a label, you can use **inner blocks** instead — drop paragraphs, images, headings, or other blocks inside the link to create rich linked content like a clickable card.
+
+> **Important:** Nesting a TMS Link inside another TMS Link is not allowed.
+
+#### Link behavior
+- **Target** — Where the link opens: same tab (default), new tab (`_blank`), parent frame, top frame, same frame.
+- **REL** — Add link relationship values: `nofollow`, `noopener`, `noreferrer`, `sponsored`, `ugc`, `author`, `license`, `me`, `next`, `prev`, `search`.
+- **Referrer Policy** — Control referrer information: `no-referrer` through `unsafe-url`.
+
+#### ARIA Controls
+- **ARIA Label** — A text description for screen readers. Especially important when the link has no visible text.
+- **Role** — Specialized options: `button`, `checkbox`, `menuitem`, `menuitemcheckbox`, `menuitemradio`, `option`, `radio`, `switch`, `tab`, `treeitem`.
+- **Extra ARIA Attributes** — Add other `aria-*` attributes.
+
+#### Custom Attributes
+- **`data-*` attributes**, `tabindex`, `title`, `download`
+
+#### Identity Controls
+- **ID**, **CSS Class**
+
+## Example HTML output
+
+**Simple text link:**
+```html
+<a href="https://example.com/about" class="tmsblocks-anchor tmsblocks-anchor-abc123" target="_blank" rel="noopener noreferrer">
+  <span>Learn more about us</span>
+</a>
+```
+
+**Linked card with inner blocks:**
+```html
+<a href="https://example.com/project" class="tmsblocks-anchor tmsblocks-anchor-def456 card-link" aria-label="View project details">
+  <span>Project Alpha</span>
+  <p>A groundbreaking new approach to data visualization.</p>
+</a>
+```
+
+**Dynamic link:**
+```html
+<a href="https://example.com/author/jane-doe" class="tmsblocks-anchor tmsblocks-anchor-ghi789" rel="author">
+  <span>Jane Doe</span>
+</a>
+```
+
+## Tips
+- **Always provide a label.** If a link has a URL but no visible label or inner blocks, visitors won't see anything to click.
+- **Inner blocks make great linked cards.** Nest a heading, image, and paragraph inside a TMS Link to create a clickable card.
+- **Dynamic label and URL are independent.** You can pull the URL from one dynamic source and the label from another.
+
+## Example uses
+- a text link to another page
+- a button-styled call-to-action link
+- a linked card containing an image, heading, and description
+- a dynamic author link pulled from post data
+- a download link with the `download` attribute
+- a `mailto:` link pulled dynamically from the author's email
+
+---
+
+# TMS Img block
+
+The TMS Img block displays an image with full control over source, performance, and appearance.
+
+## Settings sidebar
+
+The settings sidebar has two tabs:
+
+- **Wrapper** — Image source, alt text, size, performance, and attributes
+- **Styles** — Image-specific visual appearance (object-fit, object-position)
+
+### Wrapper tab
+
+#### Image source
+- **Library** — Pick from the WordPress media library.
+- **URL** — Enter a direct image URL.
+- **Dynamic** — Pull the image from a dynamic field path (featured images, custom fields, etc.).
+- **Context** — Use the image from a parent Post Context block. For attachment posts, the attachment itself is displayed. For other post types, the post's featured image is used.
+
+#### Alt text
+- **Media Library** — Uses the alt text stored in the media library (read-only).
+- **Manual / Manual Override** — Type your own alt text.
+- **Dynamic** — Pull the alt text from a dynamic field path.
+
+#### Image size
+Choose from registered image sizes: `thumbnail`, `medium`, `large`, `full`, and custom sizes.
+
+#### Performance
+- **Loading** — `Lazy` (default) defers loading until near viewport. `Eager` loads immediately.
+- **Decoding** — `Auto` (default), `Async` (off main thread), `Sync`.
+- **Fetch Priority** — `High` for hero images, `Low` for footer images, or `Default`.
+
+#### ARIA Controls, Custom Attributes, Identity Controls
+Same pattern as other blocks.
+
+### Styles tab
+
+Focuses on image-specific styling: **Object Fit** (`fill`, `contain`, `cover`, `none`, `scale-down`) and **Object Position** (anchoring within container).
+
+## Example HTML output
+
+```html
+<img id="hero-image" class="tmsblocks-img tmsblocks-img-abc789 hero"
+  src="https://example.com/wp-content/uploads/hero-photo.jpg"
+  alt="A person working at a laptop in a modern office"
+  loading="eager" fetchpriority="high" decoding="async" />
+```
+
+## Tips
+- **Use the Context source inside a Post Context block** for featured images that follow the selected post.
+- **Set fetch priority to high for hero images.**
+- **Object-fit: cover is great for consistent card layouts.**
+
+## Example uses
+- a standard content image from the media library
+- a featured image pulled dynamically from the current post
+- a hero image with eager loading
+- an image inside a linked card (wrapped in a TMS Link)
+- a context-aware image that changes with the Post Context block
+
+---
+
+# TMS List block
+
+The TMS List block creates an ordered or unordered list. It is designed to work with TMS List Item blocks inside it.
+
+## Settings sidebar
+
+The settings sidebar has two tabs:
+
+- **Wrapper** — List type and attributes
+- **Styles** — List-specific visual appearance
+
+### Wrapper tab
+
+#### List Type
+- **Unordered List (ul)** — bulleted list (default)
+- **Ordered List (ol)** — numbered list
+
+#### Inner blocks
+Add more items using the **+** appender, reorder by dragging, nest other blocks inside items.
+
+#### ARIA Controls
+Role options: `directory`, `group`, `listbox`, `menu`, `menubar`, `radiogroup`, `tablist`, `toolbar`, `tree`, `presentation`.
+
+#### Custom Attributes, Identity Controls
+Same pattern as other blocks.
+
+### Styles tab
+
+List-specific panels: **List Style Type** (disc, circle, square, decimal, etc.), **List Style Position** (outside/inside), **Custom Marker Image**.
+
+## Example HTML output
+
+```html
+<ul id="features-list" class="tmsblocks-list-block tmsblocks-list-block-def789 features" aria-label="Available features">
+  <li class="tmsblocks-list-item tmsblocks-list-item-abc123"><span>Unlimited projects</span></li>
+  <li class="tmsblocks-list-item tmsblocks-list-item-def456"><span>Priority support</span></li>
+  <li class="tmsblocks-list-item tmsblocks-list-item-ghi789"><span>Advanced reporting</span></li>
+</ul>
+```
+
+## Tips
+- **Use unordered lists for grouped information** like features, benefits, or links.
+- **Use ordered lists for sequences** like steps, rankings, or instructions.
+- **Style the list wrapper for shared spacing** and use item-level styles for per-item customizations.
+
+---
+
+# TMS List Item block
+
+The TMS List Item block represents a single entry inside a TMS List. Each item can contain its own text, inline formatting, and even nested inner blocks.
+
+## Settings sidebar
+
+The settings sidebar has two tabs:
+
+- **Wrapper** — Item content and attributes
+- **Styles** — List-item-specific visual appearance
+
+### Wrapper tab
+
+#### Content
+Type the list item text directly. Rendered inside a `<span>` tag within the `<li>` element.
+
+#### Inner blocks
+Each list item can also contain nested inner blocks — useful when a list entry needs more than just a line of text.
+
+#### ARIA Controls
+Role options: `menuitem`, `menuitemcheckbox`, `menuitemradio`, `option`, `radio`, `separator`, `tab`, `treeitem`, `presentation`.
+
+#### Custom Attributes, Identity Controls
+Same pattern as other blocks.
+
+### Styles tab
+
+List-specific panels: **List Style Type**, **List Style Position**, **Custom Marker Image** — can be set independently per breakpoint and per state.
+
+## Example HTML output
+
+```html
+<li id="feature-unlimited" class="tmsblocks-list-item tmsblocks-list-item-abc123 feature-item" aria-label="Unlimited projects feature">
+  <span>Unlimited projects</span>
+</li>
+```
+
+With nested inner blocks:
+```html
+<li class="tmsblocks-list-item tmsblocks-list-item-abc123 feature-item">
+  <span>Unlimited projects</span>
+  <p>Create as many projects as you need without restrictions.</p>
+</li>
+```
+
+## Tips
+- **Keep items focused on a single idea.**
+- **Use nested blocks for detail.**
+- **This block belongs inside a TMS List.**
+
+---
+
+# TMS Block (Generic Block)
+
+The TMS Block is the core structural block — a smart, flexible wrapper. You pick the HTML tag, drop any other blocks inside it, and style it however you like.
+
+## Settings sidebar
+
+The settings sidebar has two tabs:
+
+- **Wrapper** — Everything about the HTML element itself
+- **Styles** — Visual appearance (see The Styles tab)
+
+### Wrapper tab
+
+#### Element Tag
+Choose from semantic tags: `div` (default), `section`, `header`, `footer`, `aside`, `nav`, `main`, `article`, `figure`.
+
+**Tip:** Pick the tag that best describes the *meaning* of the content, not just how it's going to look.
+
+#### ARIA Controls
+- **ARIA Label** — A text description for screen readers.
+- **Role** — Override the implicit ARIA role (e.g. `banner`, `navigation`, `region`, `alert`, `dialog`).
+- **Extra ARIA Attributes** — Add other `aria-*` attributes as key-value pairs.
+
+#### Custom Attributes
+`data-*` attributes, `tabindex`, `title`, `download`
+
+#### Identity Controls
+- **ID**, **CSS Class**
+
+## Example HTML output
+
+```html
+<section id="features" class="tmsblocks-generic-block tmsblocks-generic-block-abc123 features-section"
+  aria-label="Product features section" role="region" data-theme="light">
+  <h2>What You Get</h2>
+  <p>Every plan includes all of the core features…</p>
+  <ul>
+    <li>Unlimited projects</li>
+    <li>Priority support</li>
+    <li>Advanced reporting</li>
+  </ul>
+</section>
+```
+
+Auto-generated CSS:
+```css
+body .tmsblocks-generic-block-abc123 {
+  margin-top: 40px; margin-bottom: 40px; padding: 32px;
+  background-color: #f5f5f5; border-radius: 8px;
+}
+@media (hover: hover) and (pointer: fine) {
+  body .tmsblocks-generic-block-abc123:hover { background-color: #e8e8e8; }
+}
+@media (max-width: 767px) {
+  body .tmsblocks-generic-block-abc123 { margin-top: 20px; margin-bottom: 20px; padding: 16px; }
+}
+```
+
+## Tips
+- **Pick the right tag.** A card is usually an `article`, a sidebar is usually an `aside`.
+- **Use the breakpoint selector early.** Switch to Tablet or Mobile to make sure your design works at every screen size.
+- **Nest blocks for complex layouts.** You can put a TMS Block inside another TMS Block.
+
+## Example uses
+- a **card container** — an `article` with padding, background, rounded corners, and inner blocks
+- a **page section** — a `section` with margin, background, and nested content
+- a **sticky header bar** — a `header` with `position: sticky`
+- a **responsive grid item** — a `div` with flex or grid properties
+
+---
+
+# TMS Dynamic Field block
+
+The TMS Dynamic Field block displays data pulled from the current post, a Query Loop, a Post Context, or a specific post. It's the most flexible way to output dynamic content — post titles, dates, custom fields, taxonomy terms, author info, comment counts, and more.
+
+Unlike the other dynamic-capable blocks, this block is purpose-built for dynamic output. It can display multiple values at once, switch between text/image/link output, and style each item independently.
+
+## Settings sidebar
+
+The settings sidebar has three tabs:
+
+- **Settings** — Field path, item type, separator, and container attributes
+- **Item** — Styles for each individual item in the output
+- **Container** — Styles for the wrapper element around all items
+
+### Settings tab
+
+#### Quick setup
+A preset dropdown lets you configure common field paths in one click — Post Title, Post Date, Categories, Tags, Author Name, Featured Image, and more.
+
+#### Field path
+Build a path step by step, choosing from:
+- **Post fields** — title, date, modified date, excerpt, content, slug, status, ID
+- **Custom fields** — any post meta / ACF field
+- **Taxonomy terms** — categories, tags, or custom taxonomy terms
+- **Author info** — name, email, bio, URL
+- **Comments** — comment count
+
+#### Value options
+- **Separator** — Text between multiple values (default: `, `).
+- **Empty text** — Fallback when the field has no value.
+- **Date format** — Custom PHP date format.
+- **Comments text** — Singular/plural labels for comment counts.
+
+#### Post source
+- **Current** — The current post (or context from Post Context / Query Loop).
+- **Specific** — A specific post you search for and select.
+
+#### Item type
+- **Text** — Output as inline or block text. Choose HTML tag: `span`, `div`, `p`, `li`, `h2`–`h4`.
+- **Image** — Output as `<img>` tags.
+- **URL / Link** — Output as clickable `<a>` tags. Additional link settings control href source, label, and target.
+
+#### Container Wrapper
+Collapsible panel with tag, ID, CSS class, ARIA controls, and custom attributes for the container.
+
+### Item tab
+
+Style panels depend on item type:
+
+| Item type | Style panels available |
+|---|---|
+| **Text** | Typography, Color, Background, Border, Spacing, Dimension, Effects, Display, Position, Flex/Grid Item |
+| **Image** | Dimension, Border, Effects, Object (fit/position), Display, Position, Spacing, Flex/Grid Item |
+| **URL / Link** | Typography, Color, Background, Border, Spacing, Dimension, Effects, Display, Position, Flex/Grid Item |
+
+### Container tab
+
+Full set of style panels for the wrapper element — same as The Styles tab.
+
+## Example HTML output
+
+```html
+<div class="tmsblocks-dynamic-field tmsblocks-dynamic-field-abc789 post-categories">
+  <span data-tmsblocks-dynamic-field-item>
+    <a href="https://example.com/category/tutorials">Tutorials</a>
+  </span>
+  <span class="tmsblocks-dynamic-field-separator" aria-hidden="true">, </span>
+  <span data-tmsblocks-dynamic-field-item>
+    <a href="https://example.com/category/wordpress">WordPress</a>
+  </span>
+</div>
+```
+
+## Tips
+- **Start with a preset.** The Quick Setup dropdown covers most common use cases.
+- **Use the preview to verify** before publishing.
+- **Choose the right item type.** Text for metadata, Image for galleries, URL/Link for clickable terms.
+- **Use inside a Post Context or Query Loop** for automatic context inheritance.
+
+## Example uses
+- displaying the current post's publish date
+- listing all categories or tags for a post
+- showing a custom field like a subtitle or external URL
+- outputting a list of taxonomy terms as clickable links
+- displaying an author's name, bio, and avatar in a template
+
+---
+
+# Post Context block
+
+The Post Context block is like a simpler Query Loop — but for a single post. You wrap a group of dynamic blocks inside it, pick one post, and every child block reads from that post automatically.
+
+## Why it's useful
+
+Each dynamic block already lets you pick a specific post using the **Post source** setting. But if you later want to point that card at a different post, you'd need to update every block one by one. With Post Context, you set the post **once** in the wrapper, and all child blocks follow.
+
+## How it works
+
+When you select a post, the block provides that post's ID and type as **context** to every child block. Any TMS block that supports dynamic content will automatically read from the selected post instead of the current page.
+
+If no post is selected, the block outputs nothing at all.
+
+## Settings sidebar
+
+The settings sidebar has two tabs:
+
+- **Wrapper** — Post selection and attributes
+- **Styles** — Visual appearance of the wrapper element (see The Styles tab)
+
+### Wrapper tab
+
+#### Post Type
+Choose the type of content — posts, pages, or any custom post type. Changing the post type resets the selected post.
+
+#### Post Selector
+Search and select a specific post. For attachment post types, becomes a media picker.
+
+#### Element Tag
+Same semantic tag options as the TMS Block: `div`, `section`, `article`, `header`, `footer`, `aside`, `nav`, `main`, `figure`.
+
+#### ARIA Controls, Custom Attributes, Identity Controls
+Same pattern as other blocks.
+
+## Example HTML output
+
+```html
+<div class="tmsblocks-post-context tmsblocks-post-context-abc789 related-card">
+  <h2 class="tmsblocks-heading tmsblocks-heading-def456">Getting Started with TMS Blocks</h2>
+  <p class="tmsblocks-paragraph tmsblocks-paragraph-ghi123">Learn how to build clean, structured content…</p>
+  <a href="https://example.com/getting-started" class="tmsblocks-anchor tmsblocks-anchor-jkl012">
+    <span>Read more</span>
+  </a>
+</div>
+```
+
+## Tips
+- **Set the post once, not per block.** One change updates everything inside.
+- **Build reusable card patterns.** Copy the whole thing and just change the selected post.
+- **Use `figure` as the wrapper tag for image/caption cards.**
+- **No post selected = nothing shown.** Make sure to pick a post before publishing.
+
+## Example uses
+- a featured post card pointing to a hand-picked article
+- a figure/img/caption pattern
+- a set of post cards, each in its own Post Context
+- a reusable card template — build once, duplicate, and repoint each copy
+
+---
+
+# TMS Path Builder
+
+The Path Builder is the control you use to tell a TMS Dynamic Field block **what data to display**. It's a step-by-step selector that builds a dot-separated "path" — a recipe for navigating from a post to the exact piece of data you want.
+
+## Where you'll find it
+
+| Block | When it appears |
+|---|---|
+| **Dynamic Field** | Always — in the Settings tab. |
+| **Heading** | When "Use dynamic content" toggle is on. |
+| **Paragraph** | When "Use dynamic content" toggle is on. |
+| **Img** | When Source is "Dynamic" (for image URL). Also for alt text. |
+
+## How it works
+
+### Step by step
+
+You build a path by adding **steps**. Each step is a pair of dropdowns:
+
+1. **Step type** (left dropdown) — what kind of data source?
+2. **Value** (right dropdown) — which specific thing?
+
+The available values in the second dropdown change based on what you picked in the first, and also based on *what came before* in the path.
+
+### The path string
+
+Format: `stepType:value` for each step, joined by dots. Example: `terms:category.term:name`
+
+## Step types reference
+
+### Post property
+Accesses a property of the current post.
+
+| Property | What it returns |
+|---|---|
+| Title | The post title |
+| Slug | The URL-friendly slug |
+| Date | The published date |
+| Excerpt | The post excerpt |
+| Permalink | Full URL to the post |
+| Featured image URL | Full URL of the featured image |
+| Featured image alt | Alt text of the featured image |
+| ID | The numeric post ID |
+
+**Example:** `post:title` → displays the post title.
+
+### Taxonomy terms
+Grabs all terms of a specific taxonomy assigned to the post. Multi-value — returns all matching terms.
+
+**Example:** `terms:category.term:name` → displays all category names.
+
+### Term property
+Picks a specific property of a taxonomy term. Only appears after a `terms` or `parent` step.
+
+| Property | What it returns |
+|---|---|
+| Name | The term's display name |
+| Slug | The URL-friendly slug |
+| Description | The term description |
+| Archive URL | Full URL to the term's archive page |
+| Count | Number of posts in this term |
+| ID | The numeric term ID |
+
+### Author
+Switches context to the post's author. Follow with a **User property** step.
+
+### User property
+Picks a specific property of a user (author).
+
+| Property | What it returns |
+|---|---|
+| Display name | The publicly shown name |
+| Email | Email address |
+| URL | Author's website URL |
+| Archive URL | URL to the author's archive page |
+
+### Comments count
+Returns the number of approved comments. No value to pick — just add this step. **Example:** `comments`
+
+### Meta field
+Accesses a custom field (post meta / ACF field). Enter the field key manually. **Example:** `meta:subtitle`
+
+### Link (URL)
+Returns a URL as a shortcut for common link targets.
+
+| Link type | What it returns |
+|---|---|
+| Post permalink | The current post's URL |
+| Previous post URL | URL of the previous post |
+| Next post URL | URL of the next post |
+| Term archive URL | Archive URL of the first term in context |
+| Author archive URL | Archive URL of the post's author |
+| Author mailto: | `mailto:` link for the author's email |
+
+### Parent term
+Navigates to the *parent* of the current term in context. Follow with a **Term property** step.
+
+## Using presets
+
+| Preset | Path built |
+|---|---|
+| Post title | `post:title` |
+| Post excerpt | `post:excerpt` |
+| Post date | `post:date` |
+| Post permalink | `post:permalink` |
+| Featured image URL | `post:featured_image_url` |
+| Comment count | `comments` |
+| Author name | `author.user:display_name` |
+| Categories | `terms:category.term:name` |
+| Tags | `terms:post_tag.term:name` |
+| Custom field | `meta:yourkey` |
+
+## Path resolution examples
+
+```
+Path: terms:category.term:name
+
+Step 1 — "terms:category" → Get all categories → [Term "Tutorials", Term "WordPress"]
+Step 2 — "term:name" → Get each term's name → ["Tutorials", "WordPress"]
+```
+
+```
+Path: author.user:display_name
+
+Step 1 — "author" → Get post's author → User (ID 42)
+Step 2 — "user:display_name" → Get display_name → "André Moreira"
+```
+
+## Multi-value vs single-value
+
+| Step type | Returns |
+|---|---|
+| `terms` | Multiple — all assigned terms |
+| `post` | Single — one value |
+| `term` | Depends — multiple if preceded by `terms`, single if by `parent` |
+| `author` + `user` | Single — one author |
+| `comments` | Single — one count |
+| `meta` | Depends — single or multiple based on the field |
+| `link` | Single — one URL |
+
+## Common path recipes
+
+| What you want | Path |
+|---|---|
+| Post title | `post:title` |
+| Post publish date | `post:date` |
+| Post excerpt | `post:excerpt` |
+| Post permalink | `post:permalink` |
+| Featured image URL | `post:featured_image_url` |
+| Comment count | `comments` |
+| Author display name | `author.user:display_name` |
+| Author archive URL | `author.user:archive` |
+| Author email (mailto) | `author.user:email` |
+| Category names | `terms:category.term:name` |
+| Category archive links | `terms:category.term:archive` |
+| Tag names | `terms:post_tag.term:name` |
+| Parent category name | `terms:category.parent.term:name` |
+| Custom taxonomy term names | `terms:your_taxonomy.term:name` |
+| ACF / custom field value | `meta:your_field_key` |
+| Previous post URL | `link:previous_post` |
+| Next post URL | `link:next_post` |

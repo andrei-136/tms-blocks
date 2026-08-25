@@ -417,10 +417,71 @@ export default function TransitionControls({
   customStyle       = {},
   updateCustomStyle,
   stateStyles       = {},
-  transitionConfig  = {},
-  setTransitionConfig = () => {},
+  transitionConfig: _transitionConfig  = {},
+  setTransitionConfig: _setTransitionConfig = () => {},
   masterTransitionConfig = null,
+  target,            // 'selector' = config stored as items in customStyle.transition
 }) {
+  const isSelectorMode = target === 'selector';
+
+  // --- Helpers: items ↔ config ---
+
+  /** Build the items array from config + activeProperties. */
+  function buildItems(configObj, activeProps) {
+    const { global: g = DEFAULT_GLOBAL, overrides = {} } = configObj;
+    return activeProps.map((prop) => {
+      const t = overrides[prop] ? { ...g, ...overrides[prop] } : g;
+      const css = serializeEntry(prop, t);
+      return { value: css, unit: 'custom', property: prop, ...t };
+    });
+  }
+
+  /** Derive config from items array. */
+  function configFromItems(items) {
+    if (!Array.isArray(items) || !items.length) {
+      return { linked: false, global: { ...DEFAULT_GLOBAL }, overrides: {}, unlinkedProperties: [] };
+    }
+    const global = {
+      duration:     items[0].duration     ?? DEFAULT_GLOBAL.duration,
+      durationUnit: items[0].durationUnit ?? DEFAULT_GLOBAL.durationUnit,
+      easing:       items[0].easing       ?? DEFAULT_GLOBAL.easing,
+      easingCustom: items[0].easingCustom ?? '',
+      delay:        items[0].delay        ?? DEFAULT_GLOBAL.delay,
+      delayUnit:    items[0].delayUnit    ?? DEFAULT_GLOBAL.delayUnit,
+    };
+    const unlinkedProperties = [];
+    const overrides = {};
+    for (const item of items) {
+      unlinkedProperties.push(item.property);
+      const gt = JSON.stringify(global);
+      const it = JSON.stringify({
+        duration: item.duration ?? global.duration, durationUnit: item.durationUnit ?? global.durationUnit,
+        easing: item.easing ?? global.easing, easingCustom: item.easingCustom ?? '',
+        delay: item.delay ?? global.delay, delayUnit: item.delayUnit ?? global.delayUnit,
+      });
+      if (it !== gt) {
+        overrides[item.property] = {
+          duration: item.duration, durationUnit: item.durationUnit,
+          easing: item.easing, easingCustom: item.easingCustom,
+          delay: item.delay, delayUnit: item.delayUnit,
+        };
+      }
+    }
+    return { linked: false, global, overrides, unlinkedProperties };
+  }
+
+  // --- Selector mode: derive config from customStyle.transition items ---
+  // Stored as { value: cssString, unit: 'custom', items: [...] }
+  const selectorConfig = useMemo(() => {
+    const tv = customStyle.transition;
+    if (tv && typeof tv === 'object' && Array.isArray(tv.items) && tv.items.length) {
+      return configFromItems(tv.items);
+    }
+    return { linked: false, global: { ...DEFAULT_GLOBAL }, overrides: {}, unlinkedProperties: [] };
+  }, [customStyle.transition]);
+
+  const transitionConfig  = isSelectorMode ? selectorConfig      : (_transitionConfig || {});
+  const setTransitionConfig = isSelectorMode ? () => {} : _setTransitionConfig;
   const config = useMemo(() => ({
     linked:             transitionConfig.linked             ?? DEFAULT_CONFIG.linked,
     global:             { ...DEFAULT_GLOBAL, ...(transitionConfig.global || {}) },
@@ -438,30 +499,47 @@ export default function TransitionControls({
   // Compare transitionConfig against master for dot colours
   const transitionLevel = useMemo(() => {
     if (activeProperties.length === 0) return 0;
-    if (!masterTransitionConfig) return 1; // blue – standalone
+    if (isSelectorMode) return 1; // standalone blue dot
+    if (!masterTransitionConfig) return 1;
     try {
-      const ours = JSON.stringify(transitionConfig);
-      const theirs = JSON.stringify(masterTransitionConfig);
-      return ours === theirs ? 2 : 3; // purple / orange
+      return JSON.stringify(transitionConfig) === JSON.stringify(masterTransitionConfig) ? 2 : 3;
     } catch { return 1; }
-  }, [activeProperties.length, masterTransitionConfig, transitionConfig]);
+  }, [activeProperties.length, isSelectorMode, masterTransitionConfig, transitionConfig]);
 
   const clearLabel = masterTransitionConfig ? 'Reset' : 'Clear';
 
   // Keep transition string in sync
   useEffect(() => {
     const nextTransition = buildTransitionString(config, activeProperties) || null;
-    const currentTransition = customStyle.transition || null;
+    const currentValue   = customStyle.transition;
+    const currentTransition = isSelectorMode
+      ? (currentValue && typeof currentValue === 'object' ? currentValue.value || null : null)
+      : (currentValue || null);
     if (nextTransition !== currentTransition) {
-      updateCustomStyle('transition', nextTransition);
+      if (isSelectorMode && nextTransition) {
+        const items = buildItems(config, activeProperties);
+        updateCustomStyle('transition', { value: nextTransition, unit: 'custom', items });
+      } else {
+        updateCustomStyle('transition', nextTransition);
+      }
     }
-  }, [activeProperties, config, customStyle.transition, updateCustomStyle]);
+  }, [activeProperties, config, customStyle.transition, updateCustomStyle, isSelectorMode]);
 
   // Commit
 
   const commit = (nextConfig, nextProperties) => {
-    setTransitionConfig(nextConfig);
-    updateCustomStyle('transition', buildTransitionString(nextConfig, nextProperties) || null);
+    const css = buildTransitionString(nextConfig, nextProperties) || null;
+    if (isSelectorMode) {
+      if (css) {
+        const items = buildItems(nextConfig, nextProperties);
+        updateCustomStyle('transition', { value: css, unit: 'custom', items });
+      } else {
+        updateCustomStyle('transition', null);
+      }
+    } else {
+      setTransitionConfig(nextConfig);
+      updateCustomStyle('transition', css);
+    }
   };
 
   // Handlers
@@ -525,7 +603,9 @@ export default function TransitionControls({
   };
 
   const handleClear = () => {
-    if (masterTransitionConfig) {
+    if (isSelectorMode) {
+      updateCustomStyle('transition', null);
+    } else if (masterTransitionConfig) {
       setTransitionConfig(masterTransitionConfig);
     } else {
       const next = { ...DEFAULT_CONFIG };
@@ -541,7 +621,8 @@ export default function TransitionControls({
       title={<PanelTitle title="Transition" level={transitionLevel} />}
       initialOpen={false}
     >
-      {/* Auto-sync toggle */}
+      {/* Auto-sync toggle — hidden in selector mode */}
+      {!isSelectorMode && (
       <ToggleControl
         label="Auto-sync properties"
         checked={config.linked}
@@ -553,6 +634,7 @@ export default function TransitionControls({
         }
         __nextHasNoMarginBottom
       />
+      )}
 
       {/* Global timing */}
       {activeProperties.length > 0 && (

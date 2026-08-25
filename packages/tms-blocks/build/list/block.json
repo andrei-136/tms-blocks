@@ -61,6 +61,10 @@
       "type": "array",
       "default": []
     },
+    "customSelectors": {
+      "type": "object",
+      "default": {}
+    },
     "transitionConfig": {
       "type": "object",
       "default": {}

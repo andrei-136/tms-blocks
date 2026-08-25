@@ -11,19 +11,24 @@ import {
   customStyleToCSSString,
   getModificationLevel,
   hasModifiedStyleProps,
+  computeNextStyle,
+  getCustomSelectorsLevel,
 } from '../../../shared/src/style-utils';
 import apiFetch from '@wordpress/api-fetch';
 import useCustomStyle from '../../../shared/src/hooks/useCustomStyle';
 import useDynamicField from '../../../shared/src/hooks/useDynamicField';
 import useUniqueId from '../../../shared/src/hooks/useUniqueId';
 import useBreakpointStyles from '../../../shared/src/hooks/useBreakpointStyles';
+import useCustomSelectorsStyle from '../../../shared/src/hooks/useCustomSelectorsStyle';
 import StyleControls from '../../../shared/src/controls/StyleControls';
 import BreakpointSelector from '../../../shared/src/controls/BreakpointSelector';
 import IdentityControls from '../../../shared/src/controls/IdentityControls';
 import AriaControls from '../../../shared/src/controls/AriaControls';
 import CustomAttributesControls from '../../../shared/src/controls/CustomAttributesControls';
+import CustomSelectorsControls from '../../../shared/src/controls/CustomSelectorsControls';
 
 import TransitionControls, { DEFAULT_GLOBAL as DEFAULT_TRANSITION_GLOBAL } from '../../../shared/src/controls/TransitionControls';
+import ContentControls from '../../../shared/src/controls/ContentControls';
 import ControlLabel from '../../../shared/src/controls/ControlLabel';
 import ImgSettings from './ImgSettings';
 import { resolveBreakpoints } from '../../../shared/src/breakpoints';
@@ -117,6 +122,7 @@ function BreakpointStateTabs({
     { name: 'base',          title: <ControlLabel label="Base"          isSet={isBaseModified}  /> },
     { name: 'hover',         title: <ControlLabel label="Hover"         isSet={isHoverModified} /> },
     { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" isSet={isFocusModified} /> },
+    { name: 'custom-css',    title: <ControlLabel label="CSS+" level={getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, activeBreakpoint)} /> },
   ];
 
   return (
@@ -179,6 +185,46 @@ function BreakpointStateTabs({
                 masterAttributes={masterAttributes}
               />
             </>
+          );
+        }
+
+        if (tab.name === 'custom-css') {
+          return (
+            <CustomSelectorsControls
+              customSelectors={attributes.customSelectors || []}
+              onChange={(next) => setAttributes({ customSelectors: next })}
+              blockClassName={attributes.uniqueId ? `.tmsblocks-img-${attributes.uniqueId}` : ''}
+              masterAttributes={masterAttributes}
+              renderStyleControls={(entry, onUpdateEntry, _onRemove, activeIndex, masterEntry) => {
+                const isPseudo = /^&:{1,2}(before|after)$/.test(entry.selector?.trim());
+                return (
+                <React.Fragment key={activeIndex}>
+                {isPseudo && (
+                <ContentControls
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                )}
+                <TransitionControls
+                  target="selector"
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                <StyleControls
+                  updateCustomStyle={(prop, value, unit) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value, unit) })}
+                  attributes={{ ...attributes, customStyle: entry.customStyle || {} }}
+                  setAttributes={(patch) => {
+                    if (patch.customStyle !== undefined) onUpdateEntry({ customStyle: patch.customStyle });
+                    else setAttributes(patch);
+                  }}
+                  clientId={clientId}
+                  include={['List', 'Object']}
+                  masterStyle={masterAttributes ? (masterEntry?.customStyle || {}) : null}
+                  masterAttributes={masterAttributes}
+                />
+                </React.Fragment>
+              );}}
+            />
           );
         }
 
@@ -258,6 +304,7 @@ export default function Edit({ attributes, setAttributes, clientId, context, mas
   const effectivePostType = postSource === 'specific' ? (sourcePostType || 'post') : (contextPostType || editorPostType);
 
   useUniqueId({ uniqueId, clientId, setAttributes });
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-img', customSelectors: attributes.customSelectors || [] });
 
   // -- Style updaters ---------------------------------------------------------
 
@@ -357,6 +404,26 @@ export default function Edit({ attributes, setAttributes, clientId, context, mas
   }, [getBreakpointLevel, responsiveStyle]);
 
   const stylesTabLevel = Math.max(desktopLevel, responsiveMaxLevel, hasTransitionChanges ? 1 : 0);
+
+  // Wrapper tab dot: aggregate override level across all wrapper attributes
+  const wrapperTabLevel = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const attrNames = ['anchorId', 'tmsClassName', 'ariaLabel'];
+    let maxLevel = 0;
+    for (const key of attrNames) {
+      const inst = attributes[key] || '';
+      const master = masterAttributes[key] || '';
+      if (!inst && !master) continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    for (const key of ['customAttributes', 'extraAriaAttributes']) {
+      const inst = JSON.stringify(attributes[key] || []);
+      const master = JSON.stringify(masterAttributes[key] || []);
+      if (inst === '[]' && master === '[]') continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    return maxLevel;
+  }, [masterAttributes, attributes]);
 
   // -- Derived alt source -----------------------------------------------------
 
@@ -484,7 +551,7 @@ export default function Edit({ attributes, setAttributes, clientId, context, mas
   };
   const handleInsertFromUrl  = ()      => setAttributes({ imageID: null, imageURL: (localUrl || '').trim() });
   const handleClearCurrentSource = () => {
-    if (imageSource === 'library') { setAttributes({ imageID: null }); return; }
+    if (imageSource === 'library') { setAttributes({ imageID: null, imageURL: '' }); return; }
     if (imageSource === 'url')     { setLocalUrl(''); setAttributes({ imageURL: '' }); return; }
     if (imageSource === 'dynamic') { setAttributes({ imagePath: '', imageSteps: [{ type: '', value: '' }] }); return; }
   };
@@ -604,7 +671,7 @@ export default function Edit({ attributes, setAttributes, clientId, context, mas
           <TabPanel
             className="tmsblocks-img-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
-              { name: 'wrapper', title: 'Wrapper' },
+              { name: 'wrapper', title: <ControlLabel label="Wrapper" level={wrapperTabLevel} /> },
               { name: 'styles',  title: <ControlLabel label="Styles"  level={stylesTabLevel} /> },
             ]}
           >
@@ -643,10 +710,11 @@ export default function Edit({ attributes, setAttributes, clientId, context, mas
                       onAltChange={handleAltChange}
                       onAltBlur={handleAltBlur}
                       onMediaLibraryClose={handleMediaLibraryClose}
+                      masterAttributes={masterAttributes}
                     />
 
 
-                    <AriaControls attributes={attributes} setAttributes={setAttributes} showRole={false} />
+                    <AriaControls attributes={attributes} setAttributes={setAttributes} showRole={false} masterAttributes={masterAttributes} />
 
                     <CustomAttributesControls
                       attributes={attributes}
@@ -658,8 +726,9 @@ export default function Edit({ attributes, setAttributes, clientId, context, mas
                           { label: 'use-credentials', value: 'use-credentials' },
                         ],
                       }}
+                      masterAttributes={masterAttributes}
                     />
-                    <IdentityControls attributes={attributes} setAttributes={setAttributes} />
+                    <IdentityControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
                   </div>
                 );
               }
@@ -671,14 +740,15 @@ export default function Edit({ attributes, setAttributes, clientId, context, mas
                     allBreakpoints={allBreakpoints}
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
-                    isDesktopModified={isBaseModified || isHoverModified || isFocusVisibleModified}
-                    desktopLevel={desktopLevel}
+                    isDesktopModified={isBaseModified || isHoverModified || isFocusVisibleModified || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
+                    desktopLevel={Math.max(desktopLevel, getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop'))}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
-                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
+                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                      getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                     }
-                    getBreakpointLevel={getBreakpointLevel}
+                    getBreakpointLevel={(key) => Math.max(getBreakpointLevel(key), getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key))}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />

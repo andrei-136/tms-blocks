@@ -18,6 +18,12 @@
   --tms-separator:    #bdb8cf;          /* light border for separating sections */
 }
 
+/* Prevent tab list horizontal overflow */
+.tmsblocks-state-tabs .components-tab-panel__tabs {
+  max-width: 100%;
+  overflow: hidden;
+}
+
 
 /* ============================================
    Panel Bodies

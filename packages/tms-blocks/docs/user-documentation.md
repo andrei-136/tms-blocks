@@ -37,7 +37,7 @@ A simple way to begin is:
 
 | Page | Description |
 |---|---|
-| [The Styles tab](styles.md) | Breakpoint selector, state tabs, style panels, and transition controls — shared across most blocks |
+| [The Styles tab](styles.md) | Breakpoint selector, state tabs, style panels, transition controls, and the CSS+ tab for custom selectors — shared across most blocks |
 
 ---
 

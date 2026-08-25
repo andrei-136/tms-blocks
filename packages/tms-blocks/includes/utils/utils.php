@@ -167,6 +167,7 @@ function tmsblocks_get_phrasing_allowed_tags() {
 
 function tmsblocks_get_block_content_allowed_tags() {
     $tags = array(
+        'a'      => array( 'href' => true, 'title' => true, 'target' => true, 'rel' => true ),
         'br'     => array(),
         'em'     => array(),
         'strong' => array(),

@@ -25,13 +25,16 @@ import useCustomStyle from '../../../shared/src/hooks/useCustomStyle';
 import useDynamicField from '../../../shared/src/hooks/useDynamicField';
 import useUniqueId from '../../../shared/src/hooks/useUniqueId';
 import useBreakpointStyles from '../../../shared/src/hooks/useBreakpointStyles';
-import { customStyleToInlineStyle, customStyleToCSSString, hasModifiedStyleProps } from '../../../shared/src/style-utils';
+import useCustomSelectorsStyle from '../../../shared/src/hooks/useCustomSelectorsStyle';
+import { customStyleToInlineStyle, customStyleToCSSString, hasModifiedStyleProps, computeNextStyle, getCustomSelectorsLevel } from '../../../shared/src/style-utils';
 import IdentityControls from '../../../shared/src/controls/IdentityControls';
+import CustomSelectorsControls from '../../../shared/src/controls/CustomSelectorsControls';
 import TagControls from '../../../shared/src/controls/TagControls';
 import AriaControls from '../../../shared/src/controls/AriaControls';
 import CustomAttributesControls from '../../../shared/src/controls/CustomAttributesControls';
 import ClassNameControl from '../../../shared/src/controls/ClassNameControl';
 import TransitionControls, { DEFAULT_GLOBAL as DEFAULT_TRANSITION_GLOBAL } from '../../../shared/src/controls/TransitionControls';
+import ContentControls from '../../../shared/src/controls/ContentControls';
 import ControlLabel from '../../../shared/src/controls/ControlLabel';
 import { resolveBreakpoints } from '../../../shared/src/breakpoints';
 import { DYNAMIC_FIELD_PRESETS } from './presets';
@@ -227,7 +230,7 @@ function UrlItemSettings({
   linkLabelMode, linkText, linkTextSteps, linkTextPath, resolvedLinkTextPath,
   linkTextValues, linkTarget,
   taxonomyOptions, postMetaOptions, termMetaOptionsByTax, userMetaOptions,
-  setAttributes,
+  setAttributes, masterAttributes = null,
 }) {
   const handleHrefStepUpdate   = (i, patch) => { const next = hrefSteps.map((s, idx) => idx !== i ? s : { ...s, ...patch }); setAttributes({ hrefSteps: next, hrefPath: stepsToPath(next) }); };
   const handleHrefStepAdd      = ()         => { const next = [...hrefSteps, { type: '', value: '' }]; setAttributes({ hrefSteps: next, hrefPath: stepsToPath(next) }); };
@@ -239,6 +242,27 @@ function UrlItemSettings({
   const handleLinkTextStepRemove   = (i)        => { const next = linkTextSteps.filter((_, idx) => idx !== i); setAttributes({ linkTextSteps: next, linkTextPath: stepsToPath(next) }); };
   const getLinkTextTaxonomyForStep = (i)        => { for (let j = i - 1; j >= 0; j--) { if (linkTextSteps[j]?.type === 'terms' && linkTextSteps[j].value) return linkTextSteps[j].value; } return ''; };
 
+  // -- Link item wrapper dots ------------------------------------------------
+  // Same wrapper-property convention: no dot on standalone, none when both are
+  // at the default, purple when the instance matches the master, orange when
+  // overridden. Paths use empty-empty -> no dot semantics.
+  const itemWrapperLevel = (inst, def, master) =>
+    masterAttributes ? (inst === def && master === def ? 0 : (inst === master ? 2 : 3)) : 0;
+  const itemPathLevel = (instPath, masterPath) => {
+    if (!masterAttributes) return 0;
+    const m = masterPath ?? '';
+    if (!instPath && !m) return 0;
+    return instPath === m ? 2 : 3;
+  };
+
+  const hrefSourceDot       = itemWrapperLevel(hrefSource, 'field', masterAttributes?.hrefSource ?? 'field');
+  const staticHrefDot       = itemWrapperLevel(staticHref, '', masterAttributes?.staticHref ?? '');
+  const hrefPathDot         = itemPathLevel(hrefPath, masterAttributes?.hrefPath);
+  const linkLabelModeDot    = itemWrapperLevel(linkLabelMode, 'dynamic', masterAttributes?.linkLabelMode ?? 'dynamic');
+  const linkTextDot         = itemWrapperLevel(linkText, '', masterAttributes?.linkText ?? '');
+  const linkTextPathDot     = itemPathLevel(linkTextPath, masterAttributes?.linkTextPath);
+  const linkTargetDot       = itemWrapperLevel(linkTarget, '_self', masterAttributes?.linkTarget ?? '_self');
+
   const sectionLabel = { fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em', color: '#1e1e1e', display: 'block', marginBottom: '8px', marginTop: '4px' };
   const divider      = { borderTop: '1px solid var(--tmsblocks-border, #d6d0f0)', margin: '12px 0' };
   const previewStyle = { fontSize: '11px', color: '#555', margin: '4px 0 0', fontStyle: 'italic', wordBreak: 'break-all' };
@@ -248,7 +272,7 @@ function UrlItemSettings({
     <>
       <span style={sectionLabel}>Link URL (href)</span>
       <SelectControl
-        label="href source"
+        label={<ControlLabel label="href source" level={hrefSourceDot} />}
         value={hrefSource}
         options={[
           { label: 'Field value is the URL', value: 'field'  },
@@ -259,7 +283,7 @@ function UrlItemSettings({
         
       />
       {hrefSource === 'static' && (
-        <TextControl label={<ControlLabel label="Static href" isSet={!!staticHref} />} value={staticHref} onChange={(v) => setAttributes({ staticHref: v })} placeholder="https://example.com" />
+        <TextControl label={<ControlLabel label="Static href" level={staticHrefDot} />} value={staticHref} onChange={(v) => setAttributes({ staticHref: v })} placeholder="https://example.com" />
       )}
       {hrefSource === 'path' && (
         <>
@@ -270,7 +294,7 @@ function UrlItemSettings({
             onUpdateStep={handleHrefStepUpdate} onAddStep={handleHrefStepAdd} onRemoveStep={handleHrefStepRemove}
             onPathChange={(newSteps, newPath) => setAttributes({ hrefSteps: newSteps, hrefPath: newPath })}
             getTaxonomyForStep={getHrefTaxonomyForStep}
-            label="href field path"
+            label={<ControlLabel label="href field path" level={hrefPathDot} />}
             help="Resolved independently from the main field."
           />
           {hrefPreviewValue && <p style={previewStyle}>Preview: <code>{hrefPreviewValue}</code></p>}
@@ -284,7 +308,7 @@ function UrlItemSettings({
         <>
           <span style={sectionLabel}>Link label</span>
           <SelectControl
-            label="Label source"
+            label={<ControlLabel label="Label source" level={linkLabelModeDot} />}
             value={linkLabelMode}
             options={[
               { label: 'Static - same text for all links', value: 'static'  },
@@ -298,7 +322,7 @@ function UrlItemSettings({
             }
           />
           {linkLabelMode === 'static' && (
-            <TextControl label={<ControlLabel label="Label text" isSet={!!linkText} />} value={linkText} onChange={(v) => setAttributes({ linkText: v })} placeholder='"Read more"' />
+            <TextControl label={<ControlLabel label="Label text" level={linkTextDot} />} value={linkText} onChange={(v) => setAttributes({ linkText: v })} placeholder='"Read more"' />
           )}
           {linkLabelMode === 'dynamic' && (
             <DynamicFieldStepBuilder
@@ -308,7 +332,7 @@ function UrlItemSettings({
               onUpdateStep={handleLinkTextStepUpdate} onAddStep={handleLinkTextStepAdd} onRemoveStep={handleLinkTextStepRemove}
               onPathChange={(newSteps, newPath) => setAttributes({ linkTextSteps: newSteps, linkTextPath: newPath })}
               getTaxonomyForStep={getLinkTextTaxonomyForStep}
-              label="Label field path"
+              label={<ControlLabel label="Label field path" level={linkTextPathDot} />}
             />
           )}
           {!!labelPreviewValue && <p style={previewStyle}>Preview: {labelPreviewValue}</p>}
@@ -319,7 +343,7 @@ function UrlItemSettings({
         <p style={previewStyle}>Field value (e.g. term name) is used as the link label automatically.</p>
       )}
       <SelectControl
-        label="Open in"
+        label={<ControlLabel label="Open in" level={linkTargetDot} />}
         value={linkTarget}
         options={[{ label: 'Same tab', value: '_self' }, { label: 'New tab', value: '_blank' }]}
         onChange={(v) => setAttributes({ linkTarget: v })}
@@ -687,6 +711,16 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
   const isSample     = previewValues.length === 0;
   const valuesToShow = isSample ? [SAMPLE_VALUES[itemType]] : previewValues.slice(0, previewLimit);
 
+  // -- Item wrapper dots ------------------------------------------------------
+  // Same wrapper-property convention: no dot on standalone, none when both are
+  // at the default, purple when the instance matches the master, orange when
+  // overridden.
+  const itemWrapperLevel = (inst, def, master) =>
+    masterAttributes ? (inst === def && master === def ? 0 : (inst === master ? 2 : 3)) : 0;
+
+  const itemTypeDot      = itemWrapperLevel(itemType, 'text', masterAttributes?.itemType ?? 'text');
+  const itemClassNameDot = itemWrapperLevel(itemClassName, '', masterAttributes?.itemClassName ?? '');
+
   // -- Render -----------------------------------------------------------------
 
   return (
@@ -732,6 +766,7 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
                       showPreview={!!(resolvedPath || path)} previewLabel="Preview"
                       previewValue={resolvedPreviewValue}
                       previewHelp={previewError || 'Preview of first resolved value for current post context.'}
+                      masterAttributes={masterAttributes} masterPathKey="path"
                     />
                     <RangeControl
                       label="Preview limit"
@@ -744,7 +779,7 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
 
                     <div style={{ borderTop: '1px solid #eee', margin: '16px 0 12px' }} />
 
-                    <SelectControl label="Item type" value={itemType} options={ITEM_TYPES} onChange={handleItemTypeChange} />
+                    <SelectControl label={<ControlLabel label="Item type" level={itemTypeDot} />} value={itemType} options={ITEM_TYPES} onChange={handleItemTypeChange} />
                     {itemType === 'image' && (
                       <Notice status="info" isDismissible={false}>
                         For single images with full controls, use the TMS Img block instead.
@@ -755,6 +790,8 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
                       <TagControls
                         tagName={itemTagName}
                         setTagName={(v) => setAttributes({ itemTagName: v })}
+                        masterAttributeKey="itemTagName"
+                        masterAttributes={masterAttributes}
                         tagNameOptions={[
                           { label: 'Span (inline)',  value: 'span' },
                           { label: 'Div (block)',    value: 'div'  },
@@ -777,16 +814,17 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
                         taxonomyOptions={taxonomyOptions} postMetaOptions={postMetaOptions}
                         termMetaOptionsByTax={termMetaOptionsByTax} userMetaOptions={userMetaOptions}
                         setAttributes={setAttributes}
+                        masterAttributes={masterAttributes}
                       />
                     )}
-                    <ClassNameControl value={itemClassName} onChange={(v) => setAttributes({ itemClassName: v })} />
+                    <ClassNameControl value={itemClassName} onChange={(v) => setAttributes({ itemClassName: v })} level={itemClassNameDot} />
 
                     <PanelBody title="Container Wrapper" initialOpen={false} style={{ margin: 0, padding: 0 }}>
                       <div style={{ margin: '-16px', marginTop: '4px' }}>
-                        <IdentityControls attributes={attributes} setAttributes={setAttributes} />
-                        <TagControls tagName={tagName} setTagName={(v) => setAttributes({ tagName: v })} />
-                        <AriaControls attributes={attributes} setAttributes={setAttributes} />
-                        <CustomAttributesControls attributes={attributes} setAttributes={setAttributes} />
+                        <IdentityControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
+                        <TagControls tagName={tagName} setTagName={(v) => setAttributes({ tagName: v })} masterAttributes={masterAttributes} />
+                        <AriaControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
+                        <CustomAttributesControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
                       </div>
                     </PanelBody>
                   </div>
@@ -819,12 +857,13 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
                       allBreakpoints={allBreakpoints}
                       activeBreakpoint={activeBreakpoint}
                       setBreakpoint={setActiveBreakpoint}
-                      isDesktopModified={isItemBaseTabModified || isItemHoverTabModified || isItemFocusVisibleTabModified}
+                      isDesktopModified={isItemBaseTabModified || isItemHoverTabModified || isItemFocusVisibleTabModified || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
                       getBreakpointIsSet={(key) =>
                         Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                         Object.keys(itemResponsiveStyle?.[key]?.base || {}).length > 0 ||
                         Object.keys(itemResponsiveStyle?.[key]?.hover || {}).length > 0 ||
-                        Object.keys(itemResponsiveStyle?.[key]?.focusVisible || {}).length > 0
+                        Object.keys(itemResponsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                        getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                       }
                       breakpointOverrides={breakpointOverrides}
                       setAttributes={setAttributes}
@@ -836,6 +875,7 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
                         { name: 'base',          title: <ControlLabel label="Base"          isSet={isStateModified('base')}         /> },
                         { name: 'hover',         title: <ControlLabel label="Hover"         isSet={isStateModified('hover')}        /> },
                         { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" isSet={isStateModified('focusVisible')} /> },
+                        { name: 'custom-css',    title: <ControlLabel label="CSS+" level={getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, activeBreakpoint)} /> },
                       ]}
                     >
                       {(itemTab) => {
@@ -869,6 +909,47 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
                                 masterAttributes={masterAttributes}
                               />
                             </>
+                          );
+                        }
+
+                        if (itemTab.name === 'custom-css') {
+                          return (
+                            <CustomSelectorsControls
+                              customSelectors={attributes.customSelectors || {}}
+                              onChange={(next) => setAttributes({ customSelectors: next })}
+                              blockClassName={attributes.uniqueId ? `.tmsblocks-dynamic-field-${attributes.uniqueId}` : ''}
+                              activeBreakpoint={activeBreakpoint}
+                              masterAttributes={masterAttributes}
+                              renderStyleControls={(entry, onUpdateEntry, _onRemove, activeIndex, masterEntry) => {
+                                const isPseudo = /^&:{1,2}(before|after)$/.test(entry.selector?.trim());
+                                return (
+                                <React.Fragment key={activeIndex}>
+                                {isPseudo && (
+                                <ContentControls
+                                  customStyle={entry.customStyle || {}}
+                                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                                />
+                                )}
+                                <TransitionControls
+                                  target="selector"
+                                  customStyle={entry.customStyle || {}}
+                                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                                />
+                                <StyleControls
+                                  updateCustomStyle={(prop, value, unit) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value, unit) })}
+                                  attributes={{ ...attributes, customStyle: entry.customStyle || {} }}
+                                  setAttributes={(patch) => {
+                                    if (patch.customStyle !== undefined) onUpdateEntry({ customStyle: patch.customStyle });
+                                    else setAttributes(patch);
+                                  }}
+                                  clientId={clientId}
+                                  include={['List']}
+                                  exclude={['Transition']}
+                                  masterStyle={masterAttributes ? (masterEntry?.customStyle || {}) : null}
+                                />
+                                </React.Fragment>
+                              );}}
+                            />
                           );
                         }
 
@@ -911,12 +992,13 @@ function EditSelected({ attributes, setAttributes, clientId, context, masterAttr
                     allBreakpoints={allBreakpoints}
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
-                    isDesktopModified={hasModifiedStyleProps(customStyle, Object.keys(customStyle || {}))}
+                    isDesktopModified={hasModifiedStyleProps(customStyle, Object.keys(customStyle || {})) || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(itemResponsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(itemResponsiveStyle?.[key]?.hover || {}).length > 0 ||
-                      Object.keys(itemResponsiveStyle?.[key]?.focusVisible || {}).length > 0
+                      Object.keys(itemResponsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                      getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                     }
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
@@ -977,6 +1059,7 @@ export default function Edit(props) {
   const { uniqueId } = attributes;
 
   useUniqueId({ uniqueId, clientId, setAttributes });
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-dynamic-field', customSelectors: attributes.customSelectors || {}, breakpointOverrides: attributes.breakpointOverrides || {}, customBreakpoints: attributes.customBreakpoints || [] });
 
   const isSelected = useSelect(
     (select) => select(blockEditorStore).getSelectedBlockClientId() === clientId,

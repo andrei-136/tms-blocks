@@ -47,7 +47,7 @@ function usePostSearch(postType, search, restBaseBySlug) {
     const restBase = restBaseBySlug?.[postType] || postType;
     const path = postType === 'attachment'
       ? `/wp/v2/media?per_page=20&search=${encodeURIComponent(search || '')}`
-      : `/wp/v2/${restBase}?per_page=20&search=${encodeURIComponent(search || '')}&status=any`;
+      : `/wp/v2/${restBase}?per_page=20&search=${encodeURIComponent(search || '')}`;
     apiFetch({ path })
       .then((posts) => { if (active) setResults(Array.isArray(posts) ? posts : []); })
       .catch(() => { if (active) setResults([]); })
@@ -60,7 +60,7 @@ function usePostSearch(postType, search, restBaseBySlug) {
 
 // â”€â”€ Components â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-export function PostSearchSelector({ postType, restBaseBySlug, value, onChange }) {
+export function PostSearchSelector({ postType, restBaseBySlug, value, onChange, level = 0 }) {
   const [search, setSearch] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [debouncedQ, setDebouncedQ] = useState('');
@@ -92,7 +92,7 @@ export function PostSearchSelector({ postType, restBaseBySlug, value, onChange }
   return (
     <div ref={wrapperRef} style={{ position: 'relative', marginBottom: '8px' }}>
       <TextControl
-        label={<ControlLabel label="Search post" isSet={value > 0} />}
+        label={<ControlLabel label="Search post" isSet={value > 0} level={level} />}
         value={search}
         onChange={(v) => { setSearch(v); setIsOpen(true); }}
         onFocus={() => setIsOpen(true)}

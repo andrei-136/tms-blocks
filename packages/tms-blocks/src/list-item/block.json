@@ -24,13 +24,15 @@
     "responsiveStyle":         { "type": "object", "default": {} },
     "breakpointOverrides":     { "type": "object", "default": {} },
     "customBreakpoints":       { "type": "array",  "default": [] },
+    "customSelectors":         { "type": "object",  "default": {} },
     "tmsClassName": { "type": "string", "default": "" }
     
   },
   "supports": {
     "html": false,
     "inserter": true,
-    "multiple": true
+    "multiple": true,
+    "splitting": true
   },
   "editorScript": "file:../../build/index.js",
   "render": "file:./render.php"

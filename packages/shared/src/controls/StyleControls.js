@@ -94,6 +94,7 @@ export default function StyleControls({
         <ListControls
           customStyle={customStyle}
           updateCustomStyle={updateCustomStyle}
+          masterStyle={masterStyle}
           {...getControlProps('List')}
         />
       )}

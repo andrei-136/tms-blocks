@@ -13,6 +13,30 @@ import DynamicFieldSettings from '../../../shared/src/controls/DynamicFieldSetti
 import ControlLabel from '../../../shared/src/controls/ControlLabel';
 import DynamicFieldStepBuilder from '../../../shared/src/controls/DynamicFieldStepBuilder';
 
+// Image attributes that make up the coupled "image source" group on an
+// instance — reset together so ID / URL / path / alt / hints stay consistent.
+const IMAGE_ATTR_KEYS = [
+  'imageSource', 'imageID', 'imageURL', 'imagePath', 'imageSteps',
+  'imageSize', 'alt', 'altSource', 'altPath', 'altSteps',
+  'loading', 'decoding', 'fetchpriority',
+];
+
+const IMAGE_ATTR_DEFAULTS = {
+  imageSource: 'library',
+  imageID: null,
+  imageURL: '',
+  imagePath: '',
+  imageSteps: [{ type: '', value: '' }],
+  imageSize: 'full',
+  alt: '',
+  altSource: 'media-library',
+  altPath: '',
+  altSteps: [{ type: '', value: '' }],
+  loading: 'lazy',
+  decoding: 'auto',
+  fetchpriority: '',
+};
+
 export default function ImgSettings({
   attributes,
   hasContext,
@@ -42,6 +66,7 @@ export default function ImgSettings({
   onAltChange,
   onAltBlur,
   onMediaLibraryClose,
+  masterAttributes = null,
 }) {
   const {
     imageSource = 'library',
@@ -50,6 +75,8 @@ export default function ImgSettings({
     imagePath = '',
     imageSteps = [{ type: '', value: '' }],
     imageSize = 'full',
+    alt = '',
+    altSource = 'media-library',
     altPath = '',
     altSteps = [{ type: '', value: '' }],
     loading = 'lazy',
@@ -59,6 +86,61 @@ export default function ImgSettings({
     sourcePostId = 0,
     sourcePostType = '',
   } = attributes;
+
+  // -- Wrapper-property dots --------------------------------------------------
+  // Same convention as the other wrapper controls: NO dot on standalone, none
+  // when both are at the default, purple when the instance matches the master,
+  // orange when overridden. Paths use empty-empty -> no dot semantics.
+  const wrapperLevel = (inst, def, master) =>
+    masterAttributes ? (inst === def && master === def ? 0 : (inst === master ? 2 : 3)) : 0;
+  const pathLevel = (instPath, masterPath) => {
+    if (!masterAttributes) return 0;
+    const m = masterPath ?? '';
+    if (!instPath && !m) return 0;
+    return instPath === m ? 2 : 3;
+  };
+
+  const imageSourceDot   = wrapperLevel(imageSource, 'library', masterAttributes?.imageSource ?? 'library');
+  const imageIdDot       = wrapperLevel(imageID ?? null, null, masterAttributes?.imageID ?? null);
+  // The URL field is only meaningful in URL mode. When the master uses the
+  // library/dynamic/context source, its imageURL attribute just caches the
+  // resolved image URL — it has no URL-field value, so the URL field's
+  // "master default" is empty. This keeps an empty URL on a URL-mode
+  // instance from showing orange against the master's cached library URL.
+  const masterUrlSource = masterAttributes?.imageSource ?? 'library';
+  const masterUrlValue  = masterUrlSource === 'url'
+    ? (masterAttributes?.imageURL ?? '')
+    : '';
+  const imageURLDot     = wrapperLevel(imageURL, '', masterUrlValue);
+  const imagePathDot     = pathLevel(imagePath, masterAttributes?.imagePath);
+  const altSourceDot     = wrapperLevel(altSource, 'media-library', masterAttributes?.altSource ?? 'media-library');
+  const altDot           = wrapperLevel(alt, '', masterAttributes?.alt ?? '');
+  const altPathDot       = pathLevel(altPath, masterAttributes?.altPath);
+  const imageSizeDot     = wrapperLevel(imageSize, 'full', masterAttributes?.imageSize ?? 'full');
+  const loadingDot       = wrapperLevel(loading, 'lazy', masterAttributes?.loading ?? 'lazy');
+  const decodingDot      = wrapperLevel(decoding, 'auto', masterAttributes?.decoding ?? 'auto');
+  const fetchpriorityDot = wrapperLevel(fetchpriority, '', masterAttributes?.fetchpriority ?? '');
+
+  // -- Reset image to master ---------------------------------------------------
+  // A cleared/changed image on an instance is a valid override, but offer a
+  // one-click way back to the master. Resets the whole coupled image group
+  // and removes the matching overrides so the master value takes effect.
+  const imageOverrides = attributes.componentOverrides || {};
+  const hasImageOverrides = IMAGE_ATTR_KEYS.some((k) => k in imageOverrides);
+
+  const resetImageToMaster = () => {
+    const master = masterAttributes || {};
+    const nextOverrides = { ...(attributes.componentOverrides || {}) };
+    const patch = { componentOverrides: nextOverrides };
+    for (const k of IMAGE_ATTR_KEYS) {
+      delete nextOverrides[k];
+      const def = IMAGE_ATTR_DEFAULTS[k];
+      patch[k] = k in master
+        ? master[k]
+        : (Array.isArray(def) ? def.map((s) => ({ ...s })) : def);
+    }
+    onSetAttributes(patch);
+  };
 
   return (
     <>
@@ -93,32 +175,48 @@ export default function ImgSettings({
         </Button>
       </div>
 
+      {masterAttributes && hasImageOverrides && (
+        <Button
+          variant="link"
+          isSmall
+          onClick={resetImageToMaster}
+          style={{ marginBottom: '8px', padding: 0 }}
+        >
+          Reset image to master
+        </Button>
+      )}
+
       <SelectControl
-        label="Source"
+        label={<ControlLabel label="Source" level={imageSourceDot} />}
         value={imageSource}
         options={imageSourceOptions}
         onChange={(v) => onSetAttributes({ imageSource: v, imageID: null, imageURL: '' })}
       />
 
       {imageSource === 'library' && (
-        <MediaUploadCheck>
-          <MediaUpload
-            onSelect={onSelect}
-            onClose={onMediaLibraryClose}
-            allowedTypes={['image']}
-            value={imageID}
-            render={({ open }) => (
-              <Button onClick={open} variant="secondary" style={{ marginBottom: '8px' }}>
-                {(image || hasSourceValue || activePreviewUrl || imageID) ? 'Replace Image' : 'Select Image'}
-              </Button>
-            )}
-          />
-        </MediaUploadCheck>
+        <>
+          <div style={{ marginBottom: '8px' }}>
+            <ControlLabel label="Image" level={imageIdDot} />
+          </div>
+          <MediaUploadCheck>
+            <MediaUpload
+              onSelect={onSelect}
+              onClose={onMediaLibraryClose}
+              allowedTypes={['image']}
+              value={imageID}
+              render={({ open }) => (
+                <Button onClick={open} variant="secondary" style={{ marginBottom: '8px' }}>
+                  {(image || hasSourceValue || activePreviewUrl || imageID) ? 'Replace Image' : 'Select Image'}
+                </Button>
+              )}
+            />
+          </MediaUploadCheck>
+        </>
       )}
 
       {imageSource === 'url' && (
         <TextControl
-          label="URL"
+          label={<ControlLabel label="URL" level={imageURLDot} />}
           value={localUrl}
           onChange={onSetLocalUrl}
           onBlur={onInsertFromUrl}
@@ -144,6 +242,8 @@ export default function ImgSettings({
           showPreview={!!imagePath}
           previewValue={dynamicSrc}
           showValueOptions={false}
+          masterAttributes={masterAttributes}
+          masterPathKey="imagePath"
         />
       )}
 
@@ -156,7 +256,7 @@ export default function ImgSettings({
       
 
       <SelectControl
-        label="Alt"
+        label={<ControlLabel label="Alt" level={altSourceDot} />}
         value={effectiveAltSource}
         options={altSourceOptions}
         onChange={(v) => onSetAttributes({ altSource: v })}
@@ -166,6 +266,7 @@ export default function ImgSettings({
         <>
           <DynamicFieldStepBuilder
             steps={altSteps}
+            label={<ControlLabel label="Content" level={altPathDot} />}
             taxonomyOptions={taxonomyOptions}
             postMetaOptions={postMetaOptions}
             termMetaOptionsByTax={termMetaOptionsByTax}
@@ -178,14 +279,14 @@ export default function ImgSettings({
         </>
       ) : effectiveAltSource === 'media-library' ? (
         <TextControl
-          label={<ControlLabel label="Alt Text" isSet={!!localAlt} />}
+          label={<ControlLabel label="Alt Text" level={altDot} />}
           value={localAlt}
           readOnly
           help="Synced from the media library. Switch to Manual Override to edit it per block."
         />
       ) : (
         <TextControl
-          label={<ControlLabel label="Alt Text" isSet={!!localAlt} />}
+          label={<ControlLabel label="Alt Text" level={altDot} />}
           value={localAlt}
           onChange={onAltChange}
           onBlur={onAltBlur}
@@ -196,14 +297,14 @@ export default function ImgSettings({
       
 
       <SelectControl
-        label={<ControlLabel label="Size" isSet={imageSize !== 'full'} />}
+        label={<ControlLabel label="Size" level={imageSizeDot} />}
         value={imageSize}
         options={imageSizeOptions}
         onChange={(v) => onSetAttributes({ imageSize: v })}
       />
 
       <SelectControl
-        label={<ControlLabel label="Loading" isSet={loading !== 'lazy'} />}
+        label={<ControlLabel label="Loading" level={loadingDot} />}
         value={loading}
         options={[
           { label: 'Lazy (Default)', value: 'lazy' },
@@ -213,7 +314,7 @@ export default function ImgSettings({
       />
 
       <SelectControl
-        label={<ControlLabel label="Decoding" isSet={decoding !== 'auto'} />}
+        label={<ControlLabel label="Decoding" level={decodingDot} />}
         value={decoding}
         options={[
           { label: 'Auto (Default)', value: 'auto' },
@@ -224,7 +325,7 @@ export default function ImgSettings({
       />
 
       <SelectControl
-        label={<ControlLabel label="Fetch Priority" isSet={!!fetchpriority} />}
+        label={<ControlLabel label="Fetch Priority" level={fetchpriorityDot} />}
         value={fetchpriority}
         options={[
           { label: 'Default', value: '' },

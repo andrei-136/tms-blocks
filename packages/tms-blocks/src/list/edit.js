@@ -9,8 +9,8 @@ import {
 } from '@wordpress/block-editor';
 import { Button, TabPanel } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
-import { customStyleToCSSString, customStyleToInlineStyle, hasModifiedStyleProps } from '../../../shared/src/style-utils';
-import { useCustomStyle, useUniqueId, useBreakpointStyles } from '../../../shared/src/hooks';
+import { customStyleToCSSString, customStyleToInlineStyle, hasModifiedStyleProps, computeNextStyle, getCustomSelectorsLevel } from '../../../shared/src/style-utils';
+import { useCustomStyle, useUniqueId, useBreakpointStyles, useCustomSelectorsStyle } from '../../../shared/src/hooks';
 import {
   StyleControls,
   IdentityControls,
@@ -20,6 +20,9 @@ import {
   ControlLabel,
   PanelTitle,
   ListSettings,
+  CustomSelectorsControls,
+  TransitionControls,
+  ContentControls,
 } from '../../../shared/src/controls';
 import { resolveBreakpoints } from '../../../shared/src/breakpoints';
 
@@ -60,6 +63,7 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
   } = attributes;
 
   useUniqueId({ uniqueId, clientId, setAttributes });
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-list', customSelectors: attributes.customSelectors || {}, breakpointOverrides: attributes.breakpointOverrides || {}, customBreakpoints: attributes.customBreakpoints || [] });
 
   const uniqueClassName = uniqueId ? `tmsblocks-list-${uniqueId}` : '';
 
@@ -126,7 +130,26 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
     Object.keys(responsiveStyle[key]?.focusVisible || {}).length > 0
   );
   const isStyleTabModified   = isBaseModified || isResponsiveModified;
-
+  // Wrapper tab dot: aggregate override level across all wrapper attributes
+  const wrapperTabLevel = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const attrNames = ['tagName', 'anchorId', 'tmsClassName', 'ariaLabel', 'ariaRole'];
+    let maxLevel = 0;
+    for (const key of attrNames) {
+      const def = key === 'tagName' ? 'ul' : '';
+      const inst = attributes[key] || def;
+      const master = masterAttributes[key] || def;
+      if (inst === def && master === def) continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    for (const key of ['customAttributes', 'extraAriaAttributes']) {
+      const inst = JSON.stringify(attributes[key] || []);
+      const master = JSON.stringify(masterAttributes[key] || []);
+      if (inst === '[]' && master === '[]') continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    return maxLevel;
+  }, [masterAttributes, attributes]);
 
   // -- Block props ------------------------------------------------------------
 
@@ -145,11 +168,16 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
     select(blockEditorStore).getSelectedBlockClientId() === clientId,
   [clientId]);
 
+  const isTemplateLocked = useSelect((select) => {
+    const block = select(blockEditorStore).getBlock(clientId);
+    return block?.attributes?.templateLock === 'all';
+  }, [clientId]);
+
   const innerBlocksProps = useInnerBlocksProps(blockProps, {
     allowedBlocks: ['tmsblocks/list-item', 'tmsblocks/generic-block'],
     template: [['tmsblocks/list-item']],
     templateLock: false,
-    renderAppender: isDirectlySelected
+    renderAppender: (isDirectlySelected && !isTemplateLocked)
       ? () => <ButtonBlockAppender className="tmsblocks-block-appender__button" rootClientId={clientId} />
       : false,
     defaultBlock: { name: 'tmsblocks/list-item' },
@@ -183,7 +211,7 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
           <TabPanel
             className="tmsblocks-list-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
-              { name: 'wrapper', title: 'Wrapper' },
+              { name: 'wrapper', title: <ControlLabel label="Wrapper" level={wrapperTabLevel} /> },
               { name: 'styles',  title: <ControlLabel label="Styles"  isSet={isStyleTabModified} /> },
             ]}
           >
@@ -199,21 +227,25 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
                         setAttributes={setAttributes}
                         customStyle={customStyle}
                         updateCustomStyle={updateCustomStyle}
+                        masterAttributes={masterAttributes}
                       />
                     </div>
                       <AriaControls
                         attributes={attributes}
                         setAttributes={setAttributes}
                         roleOptions={LIST_ROLE_OPTIONS}
+                        masterAttributes={masterAttributes}
                       />
                       <CustomAttributesControls
                         attributes={attributes}
                         setAttributes={setAttributes}
+                        masterAttributes={masterAttributes}
                       />
                       <IdentityControls
                         attributes={attributes}
                         setAttributes={setAttributes}
                         showRenderToggle={false}
+                        masterAttributes={masterAttributes}
                       />
                   </div>
                 );
@@ -227,11 +259,12 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
                     allBreakpoints={allBreakpoints}
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
-                    isDesktopModified={isBaseModified}
+                    isDesktopModified={isBaseModified || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
-                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
+                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                      getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                     }
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
@@ -244,9 +277,49 @@ export default function Edit({ attributes, setAttributes, clientId, masterAttrib
                       { name: 'base',          title: <ControlLabel label="Base"          isSet={hasModifiedStyleProps(getActiveContext('base').style,         Object.keys(getActiveContext('base').style         || {}))} /> },
                       { name: 'hover',         title: <ControlLabel label="Hover"         isSet={hasModifiedStyleProps(getActiveContext('hover').style,        Object.keys(getActiveContext('hover').style        || {}))} /> },
                       { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" isSet={hasModifiedStyleProps(getActiveContext('focusVisible').style, Object.keys(getActiveContext('focusVisible').style || {}))} /> },
+                      { name: 'custom-css',    title: <ControlLabel label="CSS+" level={getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, activeBreakpoint)} /> },
                     ]}
                   >
                     {(stateTab) => {
+                      if (stateTab.name === 'custom-css') {
+                        return (
+                          <CustomSelectorsControls
+                            customSelectors={attributes.customSelectors || {}}
+                            onChange={(next) => setAttributes({ customSelectors: next })}
+                            blockClassName={attributes.uniqueId ? `.tmsblocks-list-${attributes.uniqueId}` : ''}
+                            activeBreakpoint={activeBreakpoint}
+                            masterAttributes={masterAttributes}
+                            renderStyleControls={(entry, onUpdateEntry, _onRemove, activeIndex, masterEntry) => {
+                              const isPseudo = /^&:{1,2}(before|after)$/.test(entry.selector?.trim());
+                              return (
+                              <React.Fragment key={activeIndex}>
+                              {isPseudo && (
+                              <ContentControls
+                                customStyle={entry.customStyle || {}}
+                                updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                              />
+                              )}
+                              <TransitionControls
+                                target="selector"
+                                customStyle={entry.customStyle || {}}
+                                updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                              />
+                              <StyleControls
+                                updateCustomStyle={(prop, value, unit) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value, unit) })}
+                                attributes={{ ...attributes, customStyle: entry.customStyle || {} }}
+                                setAttributes={(patch) => {
+                                  if (patch.customStyle !== undefined) onUpdateEntry({ customStyle: patch.customStyle });
+                                  else setAttributes(patch);
+                                }}
+                                clientId={clientId}
+                                include={['List']}
+                                masterStyle={masterAttributes ? (masterEntry?.customStyle || {}) : null}
+                              />
+                              </React.Fragment>
+                            );}}
+                          />
+                        );
+                      }
                       const stateKey = stateTab.name === 'focus-visible' ? 'focusVisible' : stateTab.name;
                       const { style, updater } = getActiveContext(stateKey);
                       return (

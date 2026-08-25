@@ -12,12 +12,12 @@ import { Notice, TabPanel, Button } from '@wordpress/components';
 import { useSelect } from '@wordpress/data';
 import {
   StyleControls, IdentityControls,
-  AriaControls, BreakpointSelector, CustomAttributesControls, ControlLabel,
+  AriaControls, BreakpointSelector, CustomAttributesControls, ControlLabel, CustomSelectorsControls,
   TransitionControls, TRANSITION_DEFAULT_GLOBAL,
 } from '../../../shared/src/controls';
 import AnchorSettings from '../../../shared/src/controls/AnchorSettings';
-import { useCustomStyle, useUniqueId, useBreakpointStyles, useDynamicField } from '../../../shared/src/hooks';
-import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps } from '../../../shared/src/style-utils';
+import { useCustomStyle, useUniqueId, useBreakpointStyles, useDynamicField, useCustomSelectorsStyle } from '../../../shared/src/hooks';
+import { customStyleToCSSString, getModificationLevel, hasModifiedStyleProps, computeNextStyle, getCustomSelectorsLevel } from '../../../shared/src/style-utils';
 import { resolveBreakpoints } from '../../../shared/src/breakpoints';
 
 // -- Role options --------------------------------------------------------------
@@ -155,6 +155,7 @@ function BreakpointStateTabs({
     { name: 'base',          title: <ControlLabel label="Base"          level={baseLevel}  /> },
     { name: 'hover',         title: <ControlLabel label="Hover"         level={hoverLevel} /> },
     { name: 'focus-visible', title: <ControlLabel label="Focus-Visible" level={focusLevel} /> },
+    { name: 'custom-css',    title: <ControlLabel label="CSS+" level={getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, activeBreakpoint)} /> },
   ];
 
   return (
@@ -217,6 +218,47 @@ function BreakpointStateTabs({
                 masterAttributes={masterAttributes}
               />
             </>
+          );
+        }
+
+        if (tab.name === 'custom-css') {
+          return (
+            <CustomSelectorsControls
+              customSelectors={attributes.customSelectors || []}
+              onChange={(next) => setAttributes({ customSelectors: next })}
+              blockClassName={attributes.uniqueId ? `.tmsblocks-anchor-${attributes.uniqueId}` : ''}
+              masterAttributes={masterAttributes}
+              renderStyleControls={(entry, onUpdateEntry, _onRemove, activeIndex, masterEntry) => {
+                const isPseudo = /^&:{1,2}(before|after)$/.test(entry.selector?.trim());
+                return (
+                <React.Fragment key={activeIndex}>
+                {isPseudo && (
+                <ContentControls
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                )}
+                <TransitionControls
+                  target="selector"
+                  customStyle={entry.customStyle || {}}
+                  updateCustomStyle={(prop, value) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value) })}
+                />
+                <StyleControls
+                  updateCustomStyle={(prop, value, unit) => onUpdateEntry({ customStyle: computeNextStyle(entry.customStyle || {}, prop, value, unit) })}
+                  attributes={{ ...attributes, customStyle: entry.customStyle || {} }}
+                  setAttributes={(patch) => {
+                    if (patch.customStyle !== undefined) onUpdateEntry({ customStyle: patch.customStyle });
+                    else setAttributes(patch);
+                  }}
+                  clientId={clientId}
+                  include={['List']}
+                  exclude={['Transition']}
+                  masterStyle={masterAttributes ? (masterEntry?.customStyle || {}) : null}
+                  masterAttributes={masterAttributes}
+                />
+                </React.Fragment>
+              );}}
+            />
           );
         }
 
@@ -297,7 +339,7 @@ function EditCanvas({
   const shouldRenderLabel = isInnerTextDynamic || !!innerText?.trim() || !hasInnerBlocks;
 
   return (
-    <div {...blockProps}>
+    <div {...blockProps} style={{ pointerEvents: 'none' }}>
       {hasAnchorBlockInParents && (
         <Notice status="error" isDismissible={false}>
           This anchor block is nested inside another anchor block. Nesting anchor blocks is not allowed.
@@ -319,10 +361,11 @@ function EditCanvas({
             value={innerText}
             onChange={(value) => setAttributes({ innerText: value })}
             placeholder="Add label text or insert blocks..."
+            style={{ pointerEvents: 'auto' }}
           />
         )
       )}
-      <div {...innerBlocksProps} />
+      <div {...innerBlocksProps} style={{ pointerEvents: 'auto' }} />
     </div>
   );
 }
@@ -431,6 +474,26 @@ function EditSelected({
 
   const stylesTabLevel = Math.max(desktopLevel, hoverDesktopLevel, focusDesktopLevel, responsiveMaxLevel, hasTransitionPanelChanges ? 1 : 0);
 
+  // Wrapper tab dot: aggregate override level across all wrapper attributes
+  const wrapperTabLevel = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const attrNames = ['anchorId', 'tmsClassName', 'ariaLabel', 'ariaRole'];
+    let maxLevel = 0;
+    for (const key of attrNames) {
+      const inst = attributes[key] || '';
+      const master = masterAttributes[key] || '';
+      if (!inst && !master) continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    for (const key of ['customAttributes', 'extraAriaAttributes']) {
+      const inst = JSON.stringify(attributes[key] || []);
+      const master = JSON.stringify(masterAttributes[key] || []);
+      if (inst === '[]' && master === '[]') continue;
+      maxLevel = Math.max(maxLevel, inst === master ? 2 : 3);
+    }
+    return maxLevel;
+  }, [masterAttributes, attributes]);
+
   // -- Canvas styles ----------------------------------------------------------
 
   const uniqueClassName   = useAnchorStyles({ uniqueId, clientId, customStyle, customStyleHover, customStyleFocusVisible, responsiveStyle, breakpointOverrides, customBreakpoints });
@@ -442,8 +505,13 @@ function EditSelected({
     select(blockEditorStore).getSelectedBlockClientId() === clientId,
   [clientId]);
 
+  const isTemplateLocked = useSelect((select) => {
+    const block = select(blockEditorStore).getBlock(clientId);
+    return block?.attributes?.templateLock === 'all';
+  }, [clientId]);
+
   const innerBlocksProps = useInnerBlocksProps({}, {
-    renderAppender: isDirectlySelected
+    renderAppender: (isDirectlySelected && !isTemplateLocked)
       ? () => <ButtonBlockAppender className="tmsblocks-block-appender__button" rootClientId={clientId} />
       : false,
     defaultBlock: { name: 'tmsblocks/paragraph' },
@@ -472,7 +540,7 @@ function EditSelected({
           <TabPanel
             className="tmsblocks-anchor-top-tabs tmsblocks-inspector-top-tabs"
             tabs={[
-              { name: 'wrapper', title: 'Wrapper' },
+              { name: 'wrapper', title: <ControlLabel label="Wrapper" level={wrapperTabLevel} /> },
               { name: 'styles',  title: <ControlLabel label="Styles"  level={stylesTabLevel} /> },
             ]}
           >
@@ -487,11 +555,12 @@ function EditSelected({
                         attributes={attributes}
                         setAttributes={setAttributes}
                         context={context}
+                        masterAttributes={masterAttributes}
                       />
                     </div>
-                      <AriaControls attributes={attributes} setAttributes={setAttributes} roleOptions={ANCHOR_ROLE_OPTIONS} />
-                      <CustomAttributesControls attributes={attributes} setAttributes={setAttributes} />
-                      <IdentityControls attributes={attributes} setAttributes={setAttributes} />
+                      <AriaControls attributes={attributes} setAttributes={setAttributes} roleOptions={ANCHOR_ROLE_OPTIONS} masterAttributes={masterAttributes} />
+                      <CustomAttributesControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
+                      <IdentityControls attributes={attributes} setAttributes={setAttributes} masterAttributes={masterAttributes} />
                   </div>
                 );
               }
@@ -503,14 +572,15 @@ function EditSelected({
                     allBreakpoints={allBreakpoints}
                     activeBreakpoint={activeBreakpoint}
                     setBreakpoint={setActiveBreakpoint}
-                    isDesktopModified={isBaseModified}
-                    desktopLevel={desktopLevel}
+                    isDesktopModified={isBaseModified || getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop') > 0}
+                    desktopLevel={Math.max(desktopLevel, getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, 'desktop'))}
                     getBreakpointIsSet={(key) =>
                       Object.keys(responsiveStyle?.[key]?.base || {}).length > 0 ||
                       Object.keys(responsiveStyle?.[key]?.hover || {}).length > 0 ||
-                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0
+                      Object.keys(responsiveStyle?.[key]?.focusVisible || {}).length > 0 ||
+                      getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key) > 0
                     }
-                    getBreakpointLevel={getBreakpointLevel}
+                    getBreakpointLevel={(key) => Math.max(getBreakpointLevel(key), getCustomSelectorsLevel(attributes.customSelectors, masterAttributes, key))}
                     breakpointOverrides={breakpointOverrides}
                     setAttributes={setAttributes}
                   />
@@ -546,7 +616,7 @@ function EditSelected({
         </Notice>
       )}
 
-      <div {...blockProps}>
+      <div {...blockProps} style={{ pointerEvents: 'none' }}>
         {shouldRenderLabel && (
           isInnerTextDynamic ? (
             dynamicInnerTextValue ? (
@@ -563,10 +633,11 @@ function EditSelected({
               value={innerText}
               onChange={(value) => setAttributes({ innerText: value })}
               placeholder="Add label text or insert blocks"
+              style={{ pointerEvents: 'auto' }}
             />
           )
         )}
-        <div {...innerBlocksProps} />
+        <div {...innerBlocksProps} style={{ pointerEvents: 'auto' }} />
       </div>
     </>
   );
@@ -591,6 +662,7 @@ export default function Edit(props) {
   } = attributes;
 
   useUniqueId({ uniqueId, clientId, setAttributes });
+  useCustomSelectorsStyle({ uniqueId, clientId, classPrefix: 'tmsblocks-anchor', customSelectors: attributes.customSelectors || [] });
 
   const editorPostId   = useSelect((select) => select('core/editor')?.getCurrentPostId?.() || 0, []);
   const editorPostType = useSelect((select) => select('core/editor')?.getCurrentPostType?.() || 'post', []);

@@ -178,7 +178,11 @@ export default function TypographyControls({ customStyle, updateCustomStyle, mas
 
         <SelectControl
           label={<ControlLabel label="Font Weight" level={getLevel('fontWeight')} />}
-          value={customStyle.fontWeight || ''}
+          value={
+            typeof customStyle.fontWeight === 'object' && customStyle.fontWeight !== null && 'value' in customStyle.fontWeight
+              ? String(customStyle.fontWeight.value)
+              : (customStyle.fontWeight || '')
+          }
           options={[
             { label: 'Default', value: '' },
             { label: 'Thin (100)', value: '100' },

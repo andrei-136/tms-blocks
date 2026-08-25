@@ -1,4 +1,5 @@
-import { PanelBody, SelectControl, Button } from '@wordpress/components';
+import { PanelBody, SelectControl, Button, ToggleControl, Flex, FlexItem } from '@wordpress/components';
+import { useState, useEffect, useRef } from '@wordpress/element';
 import ControlLabel from './ControlLabel';
 import PanelTitle from './PanelTitle';
 import FlexboxControls from './FlexboxControls';
@@ -11,7 +12,8 @@ const SHARED_PROPS = ['justifyContent', 'alignItems'];
 
 const DISPLAY_PANEL_STYLE_KEYS = [
   'display',
-  'overflow',
+  'overflowX',
+  'overflowY',
   'cursor',
   ...FLEX_PROPS,
   ...GRID_PROPS,
@@ -20,7 +22,8 @@ const DISPLAY_PANEL_STYLE_KEYS = [
 
 const PROP_LABELS = {
   display: 'Display',
-  overflow: 'Overflow',
+  overflowX: 'Overflow X',
+  overflowY: 'Overflow Y',
   cursor: 'Cursor',
   flexDirection: 'Flex Direction',
   flexWrap: 'Flex Wrap',
@@ -76,6 +79,56 @@ export default function DisplayControls({
     updateCustomStyle({ display: value || null });
   };
 
+  // --- Linked overflowX / overflowY (same pattern as SpacingControls) ---
+
+  const overflowOptions = [
+    { label: 'Default', value: '' },
+    { label: 'Visible', value: 'visible' },
+    { label: 'Hidden', value: 'hidden' },
+    { label: 'Scroll', value: 'scroll' },
+    { label: 'Auto', value: 'auto' },
+    { label: 'Clip', value: 'clip' },
+  ];
+
+  const [linkOverflow, setLinkOverflow] = useState(() =>
+    (customStyle.overflowX || '') === (customStyle.overflowY || '')
+  );
+
+  const prevCustomStyleRef = useRef(customStyle);
+
+  useEffect(() => {
+    if (prevCustomStyleRef.current !== customStyle) {
+      setLinkOverflow((customStyle.overflowX || '') === (customStyle.overflowY || ''));
+      prevCustomStyleRef.current = customStyle;
+    }
+  }, [customStyle]);
+
+  const handleLinkOverflow = (enabled) => {
+    setLinkOverflow(enabled);
+    if (enabled) {
+      const linkedValue = customStyle.overflowX || customStyle.overflowY || null;
+      updateCustomStyle({ overflowX: linkedValue, overflowY: linkedValue });
+    }
+  };
+
+  const handleOverflowChange = (val) => {
+    const value = val || null;
+    if (linkOverflow) {
+      updateCustomStyle({ overflowX: value, overflowY: value });
+    } else {
+      // Called from the linked row only
+      updateCustomStyle({ overflowX: value, overflowY: value });
+    }
+  };
+
+  const handleOverflowXChange = (val) => {
+    updateCustomStyle('overflowX', val || null);
+  };
+
+  const handleOverflowYChange = (val) => {
+    updateCustomStyle('overflowY', val || null);
+  };
+
   const handleClearPanel = () => {
     const resetValues = {};
     overriddenProps.forEach((p) => { resetValues[p] = resetToMaster(p); });
@@ -115,22 +168,56 @@ export default function DisplayControls({
         />
       )}
 
-      <div style={{ marginBottom: '8px' }}>
-        <ControlLabel label="Overflow" level={getLevel('overflow')} />
+      <div style={{ marginBottom: '8px', marginTop: '4px' }}>
+        <Flex align="center" justify="space-between" style={{ fontSize: '11px', color: '#757575', marginBottom: '4px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 500, textTransform: 'uppercase' }}>
+            <ControlLabel
+              label="Overflow"
+              level={Math.max(getLevel('overflowX'), getLevel('overflowY'))}
+            />
+          </span>
+          <ToggleControl
+            label=""
+            checked={linkOverflow}
+            onChange={handleLinkOverflow}
+            __nextHasNoMarginBottom
+            style={{ marginBottom: 0 }}
+          />
+        </Flex>
+
+        {linkOverflow ? (
+          <SelectControl
+            label="Overflow"
+            hideLabelFromVision
+            value={customStyle.overflowX || ''}
+            options={overflowOptions}
+            onChange={handleOverflowChange}
+          />
+        ) : (
+          <>
+            <div style={{ marginBottom: '4px' }}>
+              <ControlLabel label="Overflow X" level={getLevel('overflowX')} />
+            </div>
+            <SelectControl
+              label="Overflow X"
+              hideLabelFromVision
+              value={customStyle.overflowX || ''}
+              options={overflowOptions}
+              onChange={handleOverflowXChange}
+            />
+            <div style={{ marginBottom: '4px', marginTop: '4px' }}>
+              <ControlLabel label="Overflow Y" level={getLevel('overflowY')} />
+            </div>
+            <SelectControl
+              label="Overflow Y"
+              hideLabelFromVision
+              value={customStyle.overflowY || ''}
+              options={overflowOptions}
+              onChange={handleOverflowYChange}
+            />
+          </>
+        )}
       </div>
-      <SelectControl
-        label="Overflow"
-        hideLabelFromVision
-        value={customStyle.overflow || ''}
-        options={[
-          { label: 'Default', value: '' },
-          { label: 'Visible', value: 'visible' },
-          { label: 'Hidden', value: 'hidden' },
-          { label: 'Scroll', value: 'scroll' },
-          { label: 'Auto', value: 'auto' }
-        ]}
-        onChange={(val) => updateCustomStyle('overflow', val || null)}
-      />
 
       {showCursor && (
         <>

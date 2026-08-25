@@ -50,6 +50,8 @@ const LAYOUT_PRESET_OPTIONS = [
   { label: 'Wide', value: 'wide' },
 ];
 
+const PRESET_DROPDOWN_THRESHOLD = 4;
+
 const getUnitLabel = (u) => {
   if (u === 'size-presets') return 'Size Presets';
   if (u === 'font-size-presets') return 'Font Size Presets';
@@ -237,21 +239,31 @@ export default function UnitControls({
             <div>
               {spacingSizes.length > 0 ? (
                 <>
-                  <ButtonGroup style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {spacingSizes.map((size) => (
-                      <Button
-                        key={size.slug}
-                        variant={number === size.slug ? 'primary' : 'secondary'}
-                        onClick={() => handlePresetClick(size.slug)}
-                      >
-                        {size.name}
-                      </Button>
-                    ))}
-                  </ButtonGroup>
-                  {selectedPresetName && (
-                    <div style={{ fontSize: '12px', color: '#757575' }}>
-                      Selected: {selectedPresetName}
-                    </div>
+                  {spacingSizes.length > PRESET_DROPDOWN_THRESHOLD ? (
+                    <SelectControl
+                      value={number}
+                      options={[
+                        { label: '— None —', value: '' },
+                        ...spacingSizes.map((size) => ({
+                          label: size.name,
+                          value: size.slug,
+                        })),
+                      ]}
+                      onChange={(slug) => handlePresetClick(slug)}
+                      __nextHasNoMarginBottom
+                    />
+                  ) : (
+                    <ButtonGroup style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {spacingSizes.map((size) => (
+                        <Button
+                          key={size.slug}
+                          variant={number === size.slug ? 'primary' : 'secondary'}
+                          onClick={() => handlePresetClick(size.slug)}
+                        >
+                          {size.name}
+                        </Button>
+                      ))}
+                    </ButtonGroup>
                   )}
                 </>
               ) : (
@@ -265,21 +277,31 @@ export default function UnitControls({
             <div>
               {fontSizePresets.length > 0 ? (
                 <>
-                  <ButtonGroup style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {fontSizePresets.map((preset) => (
-                      <Button
-                        key={preset.slug}
-                        variant={number === preset.slug ? 'primary' : 'secondary'}
-                        onClick={() => handlePresetClick(preset.slug)}
-                      >
-                        {preset.name}
-                      </Button>
-                    ))}
-                  </ButtonGroup>
-                  {selectedPresetName && (
-                    <div style={{ fontSize: '12px', color: '#757575' }}>
-                      Selected: {selectedPresetName}
-                    </div>
+                  {fontSizePresets.length > PRESET_DROPDOWN_THRESHOLD ? (
+                    <SelectControl
+                      value={number}
+                      options={[
+                        { label: '— None —', value: '' },
+                        ...fontSizePresets.map((preset) => ({
+                          label: preset.name,
+                          value: preset.slug,
+                        })),
+                      ]}
+                      onChange={(slug) => handlePresetClick(slug)}
+                      __nextHasNoMarginBottom
+                    />
+                  ) : (
+                    <ButtonGroup style={{ marginBottom: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      {fontSizePresets.map((preset) => (
+                        <Button
+                          key={preset.slug}
+                          variant={number === preset.slug ? 'primary' : 'secondary'}
+                          onClick={() => handlePresetClick(preset.slug)}
+                        >
+                          {preset.name}
+                        </Button>
+                      ))}
+                    </ButtonGroup>
                   )}
                 </>
               ) : (

@@ -76,6 +76,7 @@ export default function DynamicFieldSettings({
   previewHelp = '',
   showValueOptions = true,
   masterAttributes = null,
+  masterPathKey = 'dynamicPath',
 }) {
   // Dot for post source — orange when instance differs from master.
   // masterAttributes.postSource may be absent from the snapshot.
@@ -98,6 +99,18 @@ export default function DynamicFieldSettings({
     if (masterVal === undefined || masterVal === null) return (currentVal !== defaultVal ? 3 : 0);
     return masterVal !== currentVal ? 3 : 0;
   };
+
+  // Dot for the dynamic content path — same wrapper-property convention:
+  // no dot on standalone; on an instance, no dot when both paths are empty,
+  // purple when the instance path matches the master, orange when overridden.
+  // masterPathKey selects which master attribute holds the path (dynamicPath
+  // for paragraph/heading, path for dynamic-field).
+  const pathDot = useMemo(() => {
+    if (!masterAttributes) return 0;
+    const masterPath = masterAttributes[masterPathKey] ?? '';
+    if (!path && !masterPath) return 0;
+    return path === masterPath ? 2 : 3;
+  }, [masterAttributes, path, masterPathKey]);
 
   return (
     <BuilderSection>
@@ -132,6 +145,7 @@ export default function DynamicFieldSettings({
 
         <DynamicFieldStepBuilder
           steps={steps}
+          label={<ControlLabel label="Content" level={pathDot} />}
           taxonomyOptions={taxonomyOptions}
           postMetaOptions={postMetaOptions}
           termMetaOptionsByTax={termMetaOptionsByTax}
